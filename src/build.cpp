@@ -130,6 +130,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+  // Crear también superMinhash 
+
 	// Inicializar variables:
 	omp_set_num_threads (threads);
 	load_file_list (files, list_file);
