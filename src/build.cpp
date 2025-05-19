@@ -107,13 +107,15 @@ int main(int argc, char *argv[])
 {
 	std::vector<std::string> files;
 
+	const uint k = 31;
 	std::string list_file = "";
 	uint threads = 8;
-	const uint k = 31;
-	uint sketch_bits = 14;
+	uint aux_bytes = 256;
+  std:::string criterion = "";
 	char c;
 
-	while ((c = getopt(argc, argv, "l:t:p:")) != -1)
+
+	while ((c = getopt(argc, argv, "l:t:a:c:")) != -1)
 	{
 		switch (c) {
 			case 'l':
@@ -122,8 +124,11 @@ int main(int argc, char *argv[])
 			case 't':
 				threads = std::stoi (optarg);
 				break;
-			case 'p':
-				sketch_bits = std::stoi (optarg);
+			case 'a':
+				aux_bytes = std::stoi (optarg);
+				break;
+			case 'c':
+				criterion = std::string (optarg);
 				break;
 			default:
 				break;
@@ -136,22 +141,48 @@ int main(int argc, char *argv[])
 	omp_set_num_threads (threads);
 	load_file_list (files, list_file);
 
-	std::vector<std::pair<std::string, double>> card_name (files.size ());
-	std::map<std::string, std::shared_ptr<sketch::hll_t>> card_hll;
+  switch (criterion){
+    case 'hll_a':
+      uint p = __builtin_ctz (a);
+      std::map<std::string, std::shared_ptr<sketch::hll_t>> card_hll;
+      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+      {
+        std::string filename = files.at (i_processed);
+        card_hll[filename] = std::make_shared<sketch::hll_t> (p);
+      }
 
-	for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-	{
-		std::string filename = files.at (i_processed);
-		card_hll[filename] = std::make_shared<sketch::hll_t> (sketch_bits);
-	}
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+      {
+        std::string filename = files.at (i_processed);
+        estimate_file (card_hll[filename], filename, k);
+        card_hll[filename]->write (filename + ".hll_" + std::to_string(sketch_bits));
+      }
+    break;
 
-	#pragma omp parallel for schedule(dynamic)
-	for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-	{
-		std::string filename = files.at (i_processed);
-		estimate_file (card_hll[filename], filename, k);
-		card_hll[filename]->write (filename + ".hll_" + std::to_string(sketch_bits));
-	}
+    case 'hll_an':
+      uint p = __builtin_ctz (a);
+      std::map<std::string, std::shared_ptr<sketch::hll_t>> card_hll;
+      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+      {
+        std::string filename = files.at (i_processed);
+        card_hll[filename] = std::make_shared<sketch::hll_t> (p);
+      }
+
+      #pragma omp parallel for schedule(dynamic)
+      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+      {
+        std::string filename = files.at (i_processed);
+        estimate_file (card_hll[filename], filename, k);
+        card_hll[filename]->write (filename + ".hll_" + std::to_string(sketch_bits));
+      }
+    break;
+
+    case 'smh_a':
+      uint m = a/8;
+    default:
+      printf("Option -c invalid. The accepted criteria are hll_a, hll_an and smh_a.\n");
+  }
 
 	return 0;
 }
