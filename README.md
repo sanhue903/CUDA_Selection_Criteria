@@ -5,7 +5,7 @@ Algorithm implementation of selection criteria based on Hyperloglog and SuperMin
 
 This tool requires the following dependencies:
 - NCBI Datasets command-line tools. https://www.ncbi.nlm.nih.gov/datasets/docs/v2/command-line-tools/download-and-install/
-- Seqan library. https://packages.seqan.de/
+- Seqan library. https://seqan.readthedocs.io/en/main/Infrastructure/Use/Install.html#infra-use-install or https://packages.seqan.de/
 - Dashing library. https://github.com/dnbaker/dashing-binaries
 
 To install them follow the steps below:
