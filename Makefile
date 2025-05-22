@@ -1,4 +1,4 @@
-TARGET   := baseline
+TARGET   := selection
 CXX      := c++
 CXXFLAGS := -Wall -Wextra -std=c++14 -fopenmp -O3 -march=native -DSEQAN_HAS_ZLIB=1 -DNDEBUG
 BUILD    := ./build
@@ -7,7 +7,7 @@ APP_DIR  := $(BUILD)
 LDFLAGS  := -lstdc++ -lm -lz -pthread
 INCLUDE  := -I. -Isketch/ -Isketch/include -Isketch/include/blaze
 INCLUDE  += -I/home/centos/dw/seqan/include
-SRC     := src/baseline.cpp
+SRC     := src/selection.cpp
 
 OBJECTS := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
