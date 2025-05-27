@@ -1,0 +1,10 @@
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037919945.1_ASM3791994v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915005.1_ASM3791500v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915015.1_ASM3791501v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915075.1_ASM3791507v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915155.1_ASM3791515v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915125.1_ASM3791512v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915135.1_ASM3791513v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915395.1_ASM3791539v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037917875.1_ASM3791787v1_genomic.fna.gz
+/home/alvaro/PaperGigaScience_SlectionCriteria/datasets/test_influenzaA/GCA_037915145.1_ASM3791514v1_genomic.fna.gz
