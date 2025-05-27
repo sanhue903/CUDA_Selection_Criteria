@@ -3,7 +3,7 @@
 #include <omp.h>
 #include <iostream>
 #include <seqan/seq_io.h>
-#include <sketch/include/metrictime2.hpp>
+#include <include/metrictime2.hpp>
 #include <cmath>
 
 void write_smh(std::shared_ptr<sketch::SuperMinHash<>> smh, std::string path){
