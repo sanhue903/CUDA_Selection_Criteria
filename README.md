@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/984350098.svg)](https://doi.org/10.5281/zenodo.15537863)
+
+
 # Selection_Criteria
 
 Algorithm implementation of selection criteria based on Hyperloglog and SuperMinHash sketches to speed up genomic similarity
