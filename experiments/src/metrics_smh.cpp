@@ -3,8 +3,8 @@
 #include <omp.h>
 #include <iostream>
 #include <seqan/seq_io.h>
-#include <sketch/include/metrictime2.hpp>
-#include <sketch/include/criteria_sketch.hpp>
+#include <include/metrictime2.hpp>
+#include <include/criteria_sketch.hpp>
 #include <cmath>
 
 
