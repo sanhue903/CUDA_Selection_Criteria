@@ -35,6 +35,7 @@ sudo cp -r share/doc/seqan /usr/share/doc
 
 ### Sketch library
 
+Clone the Sketch library using the following command inside the folder created when cloning this repository (by default its name is ``Selection_Criteria``):
 ```
 git clone --depth 1 --branch v0.19.0 https://github.com/dnbaker/sketch
 ```
