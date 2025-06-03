@@ -5,14 +5,19 @@
 
 Algorithm implementation of selection criteria based on Hyperloglog and SuperMinHash sketches to speed up genomic similarity
 
-## Installation
+## Installation (Linux)
 
-This tool requires the following dependices. They can be installed via `apt-get`:
+This tool requires the following dependencies. They can be installed via `apt-get`:
 - make
 - g++ 
 - libz-dev
 
-We also need to install the following libraries:
+Now, clone this repository into target folder:
+```
+git clone https://github.com/AlvaroGuzmanChacon/Selection_Criteria
+```
+
+We need to install the following libraries:
 - Seqan library. https://seqan.readthedocs.io/en/main/Infrastructure/Use/Install.html#infra-use-install or https://packages.seqan.de/
 - Sketch library. https://github.com/dnbaker/sketch
 
@@ -36,7 +41,7 @@ git clone --depth 1 --branch v0.19.0 https://github.com/dnbaker/sketch
 
 ## Use
 
-The implementation of the selection criteria is in the `src` folder. The file `build_sketch.cpp` contains the sketch construction step. Once compiled, this program is used as follows:
+The implementation of the selection criteria is in the `src` folder. To compile the .cpp files use the Makefile provided. The file `build_sketch.cpp` contains the sketch construction step. Once compiled, this program is used as follows:
 ```
 ./build/build_sketch -l filelist -t nthreads -a aux_memory -c criterion
 ```
