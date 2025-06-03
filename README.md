@@ -75,9 +75,9 @@ The first command would create the hll sketches of 256 bytes associated with the
 
 ## Experiments
 
-We provide implementation of experiments to evaluate metrics such as time of comparisions and classification metrics. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program. These implementation are in the `experiments/src` folder. The implementation with the prefix `metrics`, return the True Positives, True Negatives, False Positives and False Negatives of the selection criteria based on the sketch given by the suffix (`hll` or `smh`). Similarly, the implementation with the prefix `time`, return the execution time, in seconds, that takes the selection criteria to retrieve similar pairs. Again, the suffix (`hll` or `smh`) indicates the selection criteria used (based on Hyperloglog or SuperMinHash). We also provide Makefiles for these implementation, whcih can be indetified with the prefix `Make_exp_`. 
+We provide implementation of experiments to evaluate metrics such as time of comparisions and classification metrics. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program. These implementation are in the `experiments/src` folder. The implementation with the prefix `metrics`, return the True Positives, True Negatives, False Positives and False Negatives of the selection criteria based on the sketch given by the suffix (`hll` or `smh`). Similarly, the implementation with the prefix `time`, return the execution time, in seconds, that takes the selection criteria to retrieve similar pairs. Again, the suffix (`hll` or `smh`) indicates the selection criteria used (based on Hyperloglog or SuperMinHash). We also provide Makefiles for these implementation, which can be indetified with the prefix `Make_metrics` or `Make_time`.
 
-As an example, if we compile `metrics_hll.cpp`, then the program is run as follows:
+As an example, if we compile `metrics_hll.cpp` with the Makefile `Make_metrics_hll` (running `make -f Make_metrics_hll`), then the program used as follows:
 ```
 ./build/metrics_hll -l filelist -t nthreads -h tau -p hll_bits -n Taylors_order
 ```
@@ -88,7 +88,7 @@ Where
 - `-p` option recieves the number which determines the number of buckets of the auxiliar Hyperloglog sketch 2^p.
 - `-n` option recieves the order of the Taylo's aproximation to use.
 
-The output is the classification metrics of the `CB+hll_a` and `CB+hll_an` criterion, along with the `CB` criterion. Similarly, if we compile `time_smh.cpp`, then this program is run as follows:
+The output is the classification metrics of the `CB+hll_a` and `CB+hll_an` criterion, along with the `CB` criterion. Similarly, if we compile `time_smh.cpp`, then this program is used as follows:
 ```
 ./build/smh_hll -l filelist -t nthreads -h tau -m buckets_smh
 ```
