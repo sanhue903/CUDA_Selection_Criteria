@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 		std::string filename = files.at (i_processed);
 		// Cargar .hll de tamaño 2^14 ya antes creados
 		name2hll[filename] = std::make_shared<sketch::hll_t>(filename + ".hll");
-		name2hll_aux[filename] = std::make_shared<sketch::hll_t>(filename + ".hll"+std::to_string(hll_aux_bits));
+		name2hll_aux[filename] = std::make_shared<sketch::hll_t>(filename + ".hll_"+std::to_string(hll_aux_bits));
 		// Cosntruir nuevos sketches auxiliares (hll y mh)
 		//sketch_file (name2hll_aux[filename], filename, k);
 
