@@ -41,7 +41,7 @@ git clone --depth 1 --branch v0.19.0 https://github.com/dnbaker/sketch
 
 ## Use
 
-The implementation of the selection criteria is in the `src` folder. To compile the .cpp files use the Makefile provided. The file `build_sketch.cpp` contains the sketch construction step. Once compiled, this program is used as follows:
+The implementation of the selection criteria is in the `src` folder. To compile the .cpp files use the Makefile provided: Make_build and Make_selection. The file `build_sketch.cpp` contains the sketch construction step. To compile run `make -f Make_build`. Once compiled, this program is used as follows:
 ```
 ./build/build_sketch -l filelist -t nthreads -a aux_memory -c criterion
 ```
@@ -53,7 +53,7 @@ Where
 
 Once the command is run, the primary hll sketches and auxiliary structures will be saved along the genomic .fna.gz files.
 
-The `selection.cpp` file has the selection algorithm. Once compiled, this program is used as follows:
+The `selection.cpp` file has the selection algorithm. To compile run `make -f Make_selection`. Once compiled, this program is used as follows:
 ```
 ./build/selection -l filelist -t nthreads -h tau -a aux_memory -c criterion
 ```
@@ -72,3 +72,30 @@ The `datasets` folder has the datasets contains the manifest.zip files in the `M
 ./build/selection -l test_influeza_filelist.txt -t 8 nthreads -h 0.8 -a 256 -c hll_an > results.txt
 ```
 The first command would create the hll sketches of 256 bytes associated with the files specified in `test_influeza_filelist.txt`, using 8 threads. Then, the second command would use the `hll_an` criterion to try and find the pairs of sequences (between the 10 sequences on `test_influeza_filelist.txt`) with a Jaccard similarity greater than or equal to 0.8, using 8 threads and using the hll sketches of 256 bytes previously constructed.
+
+## Experiments
+
+We provide implementation of experiments to evaluate metrics such as time of comparisions and classification metrics. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program. These implementation are in the `experiments/src` folder. The implementation with the prefix `metrics`, return the True Positives, True Negatives, False Positives and False Negatives of the selection criteria based on the sketch given by the suffix (`hll` or `smh`). Similarly, the implementation with the prefix `time`, return the execution time, in seconds, that takes the selection criteria to retrieve similar pairs. Again, the suffix (`hll` or `smh`) indicates the selection criteria used (based on Hyperloglog or SuperMinHash). We also provide Makefiles for these implementation, whcih can be indetified with the prefix `Make_exp_`. 
+
+As an example, if we compile `metrics_hll.cpp`, then the program is run as follows:
+```
+./build/metrics_hll -l filelist -t nthreads -h tau -p hll_bits -n Taylors_order
+```
+Where
+- `-l` option recieves a txt file containing the path to the .fna.gz files that will be processed. One line for every path.
+- `-t` option recieves the number of threads to run the program.
+- `-h` option recieves the similarity threshold `tau`.
+- `-p` option recieves the number which determines the number of buckets of the auxiliar Hyperloglog sketch 2^p.
+- `-n` option recieves the order of the Taylo's aproximation to use.
+
+The output is the classification metrics of the `CB+hll_a` and `CB+hll_an` criterion, along with the `CB` criterion. Similarly, if we compile `time_smh.cpp`, then this program is run as follows:
+```
+./build/smh_hll -l filelist -t nthreads -h tau -m buckets_smh
+```
+Where
+- `-l` option recieves a txt file containing the path to the .fna.gz files that will be processed. One line for every path.
+- `-t` option recieves the number of threads to run the program.
+- `-h` option recieves the similarity threshold `tau`.
+- `-m` option recieves number of buckets of the auxiliar SuperMinHash sketch m.
+
+The output is the time it takes to retrieve the similar pairs using the `CB+smh_a` criterion, we also include the results of the `CB` criterion and with no criterion (baseline case).
