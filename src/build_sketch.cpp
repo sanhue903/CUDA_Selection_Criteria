@@ -38,7 +38,7 @@ uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 	return (b_kmer < reverse) ? b_kmer : reverse;
 }
 
-void sketch_hll (std::shared_ptr<sketch::hll_t> s, std::string filename, int k)
+void sketch_hll (std::shared_ptr<sketch::hll_t> s, std::string filename, uint k)
 {
 	seqan::SeqFileIn seqFileIn;
 	if (!open(seqFileIn, filename.c_str ()))
@@ -55,12 +55,12 @@ void sketch_hll (std::shared_ptr<sketch::hll_t> s, std::string filename, int k)
 		try {
 			seqan::readRecord(id, seq, seqFileIn);
 		}
-		catch (seqan::ParseError a) {
+		catch (seqan::ParseError &a) {
 			break;
 		}
 
 		uint64_t kmer = 0;
-		size_t bases = 0;
+		uint bases = 0;
 		for (size_t i = 0; i < length(seq); ++i)
 		{
 			uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
@@ -94,7 +94,7 @@ void sketch_hll (std::shared_ptr<sketch::hll_t> s, std::string filename, int k)
 	close (seqFileIn);
 }
 
-void sketch_smh (std::shared_ptr<sketch::SuperMinHash<>> smh, std::string filename, int k)
+void sketch_smh (std::shared_ptr<sketch::SuperMinHash<>> smh, std::string filename, uint k)
 {
 	seqan::SeqFileIn seqFileIn;
 	if (!open(seqFileIn, filename.c_str ()))
@@ -111,12 +111,12 @@ void sketch_smh (std::shared_ptr<sketch::SuperMinHash<>> smh, std::string filena
 		try {
 			seqan::readRecord(id, seq, seqFileIn);
 		}
-		catch (seqan::ParseError a) {
+		catch (seqan::ParseError &a) {
 			break;
 		}
 
 		uint64_t kmer = 0;
-		size_t bases = 0;
+		uint bases = 0;
 		for (size_t i = 0; i < length(seq); ++i)
 		{
 			uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
     write_hll(name2hll14[filename],filename + ".hll");
   }
 
-  // Auxiliary sketches
+  // Auxiliary sketches of criteria
   if (criterion == "hll_a"){
       uint p = __builtin_ctz (aux_bytes);
       std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;

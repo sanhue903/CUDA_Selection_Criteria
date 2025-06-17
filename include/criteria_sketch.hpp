@@ -63,12 +63,12 @@ bool hll_a(double tau, size_t card_A, size_t card_B, std::shared_ptr<sketch::hll
 	return (K_mas >= tau);
 }
 
-bool smh_a(std::vector<uint64_t> v1, std::vector<uint64_t> v2, int n_rows, int n_bands){
+bool smh_a(std::vector<uint64_t> v1, std::vector<uint64_t> v2, uint n_rows, uint n_bands){
 	if(n_rows*n_bands!=v1.size()){
 		std::cerr << "ERROR: Number of bands and rows doesnt match the MinHash sketch size." << "\n";
 		return 0;
 	}
-	for(int band_id=0;band_id<n_bands;band_id++){
+	for(uint band_id=0;band_id<n_bands;band_id++){
 		bool check = std::equal(
 				v1.begin() + band_id*n_rows, v1.begin() + (band_id+1)*n_rows,
 				v2.begin() + band_id*n_rows, v2.begin() + (band_id+1)*n_rows

@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	// Paso 0: Cargar parámetros ##############################
 	std::vector<std::string> files;
 
-	const uint k = 31;
+	//const uint k = 31;
 	float z_score = 1.96;
 	int order_n = 1;
 	std::string list_file = "";
@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
 	std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll14;
 	std::string out[files.size()];
 
+  // hll_a is cb+hll_a
   if (criterion == "hll_a"){
 	  // Read sketches from disk and order according to reported cardinality of primary hll sketch
     std::map<std::string, std::shared_ptr<sketch::hll_t>> name2aux;
@@ -140,7 +141,7 @@ int main(int argc, char *argv[])
                return x.second < y.second;
                });
 
-    // Comparison 
+    // Comparison
     #pragma omp parallel for schedule(dynamic)
     for (size_t i_processed = 0; i_processed < card_name.size () - 1; ++i_processed)
     {
@@ -248,7 +249,7 @@ int main(int argc, char *argv[])
                });
 
     int n_rows = 1, n_bands = 1;
-    for (int band=1; band <=m; band++){
+    for (uint band=1; band <=m; band++){
       if (m % band != 0) continue;
       n_bands = band;
       n_rows = m / n_bands;

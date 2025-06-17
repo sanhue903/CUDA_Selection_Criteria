@@ -23,7 +23,7 @@ uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 	return (b_kmer < reverse) ? b_kmer : reverse;
 }
 
-void sketch_file (std::shared_ptr<sketch::hll_t> hll_aux, std::string filename, int k)
+void sketch_file (std::shared_ptr<sketch::hll_t> hll_aux, std::string filename, uint k)
 {
 	seqan::SeqFileIn seqFileIn;
 	if (!open(seqFileIn, filename.c_str ()))
@@ -40,12 +40,12 @@ void sketch_file (std::shared_ptr<sketch::hll_t> hll_aux, std::string filename, 
 		try {
 			seqan::readRecord(id, seq, seqFileIn);
 		}
-		catch (seqan::ParseError a) {
+		catch (seqan::ParseError &a) {
 			break;
 		}
 
 		uint64_t kmer = 0;
-		size_t bases = 0;
+		uint bases = 0;
 		for (size_t i = 0; i < length(seq); ++i)
 		{
 			uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 
 	std::string list_file = "";
 	uint threads = 8;
-	const uint k = 31;
+	//const uint k = 31;
 	const uint sketch_bits = 14;
 	uint hll_aux_bits = 7;
 	float threshold = 0.9;

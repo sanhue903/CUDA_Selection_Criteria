@@ -22,7 +22,7 @@ uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 	return (b_kmer < reverse) ? b_kmer : reverse;
 }
 
-void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, int k)
+void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, uint k)
 {
 	sketch::SuperMinHash<> smh(mh_vector.size()-1);
 	seqan::SeqFileIn seqFileIn;
@@ -40,12 +40,12 @@ void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, int k)
 		try {
 			seqan::readRecord(id, seq, seqFileIn);
 		}
-		catch (seqan::ParseError a) {
+		catch (seqan::ParseError &a) {
 			break;
 		}
 
 		uint64_t kmer = 0;
-		size_t bases = 0;
+		uint bases = 0;
 		for (size_t i = 0; i < length(seq); ++i)
 		{
 			uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
@@ -76,7 +76,7 @@ void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, int k)
 			}
 		}
 	}
-	for(int i=0;i<mh_vector.size();i++){
+	for(size_t i=0;i<mh_vector.size();i++){
 		mh_vector[i] =smh.h_[i];
 	}
 	close (seqFileIn);
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 	std::vector<std::pair<std::string, double>> card_name (files.size ());
 	std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
 	std::map<std::string, std::vector<uint64_t>> name2mhv;
-	int add_mem = 8*mh_size;
+	//int add_mem = 8*mh_size;
 
 	for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
 	{
