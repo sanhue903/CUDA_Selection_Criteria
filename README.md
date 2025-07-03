@@ -14,7 +14,7 @@ This tool requires the following dependencies. They can be installed via `apt-ge
 
 Now, clone this repository into target folder:
 ```
-git clone https://github.com/AlvaroGuzmanChacon/Selection_Criteria
+git clone https://github.com/sanhue903/CUDA_Selection_Criteria
 ```
 
 We need to install the following libraries:
