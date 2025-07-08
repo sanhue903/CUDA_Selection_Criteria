@@ -1,1 +1,12 @@
 src/baseline.cpp
+/build
+*.o
+*.a
+*.so
+*.out
+*.log
+
+/results
+
+.vscode/
+.DS_Store

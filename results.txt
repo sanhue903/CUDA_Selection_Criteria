@@ -1,0 +1,7 @@
+datasets/test_influenzaA/GCA_037915005.1_ASM3791500v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915015.1_ASM3791501v1_genomic.fna.gz 0.946107
+datasets/test_influenzaA/GCA_037915125.1_ASM3791512v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915135.1_ASM3791513v1_genomic.fna.gz 0.946087
+datasets/test_influenzaA/GCA_037915125.1_ASM3791512v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915155.1_ASM3791515v1_genomic.fna.gz 0.951052
+datasets/test_influenzaA/GCA_037915125.1_ASM3791512v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915145.1_ASM3791514v1_genomic.fna.gz 0.950466
+datasets/test_influenzaA/GCA_037915135.1_ASM3791513v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915155.1_ASM3791515v1_genomic.fna.gz 0.979018
+datasets/test_influenzaA/GCA_037915135.1_ASM3791513v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915145.1_ASM3791514v1_genomic.fna.gz 0.970797
+datasets/test_influenzaA/GCA_037915155.1_ASM3791515v1_genomic.fna.gz datasets/test_influenzaA/GCA_037915145.1_ASM3791514v1_genomic.fna.gz 0.978520
