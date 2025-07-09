@@ -1,4 +1,4 @@
-#include "sketch/sketch.h"
+#include "sketch/bbmh.h"
 #include <fstream>
 #include <omp.h>
 #include <iostream>
@@ -6,7 +6,7 @@
 #include <include/metrictime2.hpp>
 #include <cmath>
 
-void write_smh(std::shared_ptr<sketch::SuperMinHash<>> smh, std::string path){
+void write_smh(std::shared_ptr<sketch::minhash::SuperMinHash<>> smh, std::string path){
 	std::vector<uint64_t> smh_vector = smh->h_;
 	uint32_t smh_size = smh->h_.size();
 
