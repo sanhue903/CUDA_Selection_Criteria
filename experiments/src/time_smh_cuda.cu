@@ -1,4 +1,4 @@
-#include "sketch/sketch.h"
+#include "sketch/bbmh.h"
 #include <fstream>
 #include <iostream>
 #include <seqan/seq_io.h>
@@ -20,7 +20,7 @@ uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 
 void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, uint k)
 {
-    sketch::SuperMinHash<> smh(mh_vector.size()-1);
+    sketch::minhash::SuperMinHash<> smh(mh_vector.size()-1);
     seqan::SeqFileIn seqFileIn;
     if (!open(seqFileIn, filename.c_str ()))
     {
