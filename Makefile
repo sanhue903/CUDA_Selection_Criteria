@@ -26,17 +26,11 @@ BUILD    := build
 OBJ_DIR  := $(BUILD)/objects
 BIN_DIR  := $(BUILD)
 
-# ------------------------ Mapear ejecutables → archivo fuente -------------
-metrics_hll_src       := experiments/src/metrics_hll.cpp
-metrics_smh_src       := experiments/src/metrics_smh.cpp
-time_hll_src          := experiments/src/time_hll.cpp
+
 time_smh_src          := experiments/src/time_smh.cpp
 build_sketch_src      := src/build_sketch.cpp
 selection_src         := src/selection.cpp
 
-metrics_hll_cuda_src  := experiments/src/metrics_hll_cuda.cu
-metrics_smh_cuda_src  := experiments/src/metrics_smh_cuda.cu
-time_hll_cuda_src     := experiments/src/time_hll_cuda.cu
 time_smh_cuda_src     := experiments/src/time_smh_cuda.cu
 build_sketch_cuda_src := src/build_sketch_cuda.cu
 selection_cuda_src    := src/selection_cuda.cu
