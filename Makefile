@@ -16,7 +16,7 @@ LDFLAGS   := -lstdc++ -lm -lz -pthread
 
 NVCC      := nvcc
 CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
-             -arch=sm_75 -DNDEBUG -lineinfo
+             -arch=sm_86 -DNDEBUG -lineinfo
 LDFLAGS_CUDA := -lcudart -lm -lz -pthread
 
 INCLUDE    := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
