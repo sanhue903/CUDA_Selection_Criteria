@@ -2,7 +2,7 @@
 #  Makefile: OpenMP  +  CUDA
 ###############################################################################
 
-TARGETS_CPU  := metrics_hll metrics_smh time_hll time_smh build_sketch selection
+TARGETS_CPU  := time_smh build_sketch selection
 TARGETS_CUDA := $(addsuffix _cuda,$(TARGETS_CPU))
 TARGETS      := $(TARGETS_CPU) $(TARGETS_CUDA)
 
