@@ -19,7 +19,7 @@
 #include "./setsketch.h"
 
 #ifdef __CUDACC__
-#include "hllgpu.h"
+#include "./wip/cuda/hll.cuh"
 #endif
 
 namespace sketch {
