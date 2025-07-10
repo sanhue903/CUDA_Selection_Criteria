@@ -1,7 +1,7 @@
 #ifndef HLL_GPU_H__
 #define HLL_GPU_H__
 #include "sketch/hll.h"
-#include "macros.h"
+#include "sketch/macros.h"
 #include "exception.h"
 #include <type_traits>
 #if USE_THRUST
