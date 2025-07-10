@@ -1,4 +1,4 @@
-#include "sketch/sketch.h"
+#include "sketch/bbmh.h"
 #include <fstream>
 #include <iostream>
 #include <seqan/seq_io.h>
@@ -11,7 +11,7 @@
 #include <cuda_runtime.h>
 
 // -------------------------------------------------------------------
-// FUNCIONES DE UTILIDAD (como en tu versión)
+// FUNCIONES DE UTILIDAD (
 // -------------------------------------------------------------------
 
 std::vector<uint64_t> read_smh(std::string path) {
