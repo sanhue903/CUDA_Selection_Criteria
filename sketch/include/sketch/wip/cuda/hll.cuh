@@ -2,7 +2,7 @@
 #define HLL_GPU_H__
 #include "sketch/hll.h"
 #include "sketch/macros.h"
-#include "exception.h"
+#include "sketch/exception.h"
 #include <type_traits>
 #if USE_THRUST
 #  include <thrust/device_vector.h>
