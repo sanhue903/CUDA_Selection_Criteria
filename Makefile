@@ -3,7 +3,7 @@
 ###############################################################################
 
 TARGETS_CPU  := time_smh build_sketch selection
-TARGETS_CUDA := $(addsuffix _cuda,$(TARGETS_CPU))
+TARGETS_CUDA :=  selection_cuda # build_sketch_cuda
 TARGETS      := $(TARGETS_CPU) $(TARGETS_CUDA)
 
 SRC_DIRS := experiments/src src
@@ -11,16 +11,16 @@ SRC_DIRS := experiments/src src
 # ------------------------ Compiladores y flags ----------------------------
 CXX       := c++
 CXXFLAGS  := -Wall -Wextra -std=c++14 -fopenmp -O3 -march=native \
-             -DSEQAN_HAS_ZLIB=1 -DNDEBUG
+			 -DSEQAN_HAS_ZLIB=1 -DNDEBUG
 LDFLAGS   := -lstdc++ -lm -lz -pthread
 
 NVCC      := nvcc
 CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
-             -arch=sm_86 -DNDEBUG -lineinfo
-LDFLAGS_CUDA := -lcudart -lm -lz -pthread
+			 -arch=sm_86 -DNDEBUG -lineinfo
+LDFLAGS_CUDA := -lcudart -lm -lz
 
 INCLUDE    := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
-              -I/home/centos/dw/seqan/include -Iinclude
+			  -I/home/centos/dw/seqan/include -Iinclude
 
 BUILD    := build
 OBJ_DIR  := $(BUILD)/objects
@@ -31,7 +31,7 @@ time_smh_src          := experiments/src/time_smh.cpp
 build_sketch_src      := src/build_sketch.cpp
 selection_src         := src/selection.cpp
 
-time_smh_cuda_src     := experiments/src/time_smh_cuda.cu
+## time_smh_cuda_src     := experiments/src/time_smh_cuda.cu
 build_sketch_cuda_src := src/build_sketch_cuda.cu
 selection_cuda_src    := src/selection_cuda.cu
 
