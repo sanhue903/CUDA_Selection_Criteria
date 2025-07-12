@@ -7,7 +7,7 @@
 #include <string>
 #include <cmath>
 #include <zlib.h>
-#include "criteria_smh.cuh" // <-- Usa el header device que definiste
+#include "criteria_sketch_cuda.cuh"
 #include <cuda_runtime.h>
 
 // -------------------------------------------------------------------
