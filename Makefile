@@ -34,17 +34,18 @@ selection_src         := src/selection.cpp
 ## time_smh_cuda_src     := experiments/src/time_smh_cuda.cu
 build_sketch_cuda_src := src/build_sketch_cuda.cu
 selection_cuda_src    := src/selection_cuda.cu
+selection_main_src    := src/selection_main.cpp
 
 SRCS_CPU   := $(foreach t,$(TARGETS_CPU),  $($(t)_src))
-SRCS_CUDA  := $(foreach t,$(TARGETS_CUDA), $($(t)_src))
+SRCS_CUDA  := $(foreach t,$(TARGETS_CUDA), $($(t)_src)) $(selection_main_src)
 SRCS       := $(SRCS_CPU) $(SRCS_CUDA)
 
 OBJECTS_CPU  := $(SRCS_CPU:%.cpp=$(OBJ_DIR)/%.o)
-OBJECTS_CUDA := $(SRCS_CUDA:%.cu=$(OBJ_DIR)/%.o)
+OBJECTS_CUDA := $(selection_main_src:src/%.cpp=$(OBJ_DIR)/src/%.o) $(selection_cuda_src:src/%.cu=$(OBJ_DIR)/src/%.o)
 OBJECTS      := $(OBJECTS_CPU) $(OBJECTS_CUDA)
 
 BINARIES_CPU  := $(addprefix $(BIN_DIR)/,$(TARGETS_CPU))
-BINARIES_CUDA := $(addprefix $(BIN_DIR)/,$(TARGETS_CUDA))
+BINARIES_CUDA := $(BIN_DIR)/selection_cuda
 BINARIES      := $(BINARIES_CPU) $(BINARIES_CUDA)
 
 # ------------------------ 7. Regla por defecto -------------------------------
@@ -65,16 +66,18 @@ $(foreach t,$(TARGETS_CPU),\
   $(eval $(BIN_DIR)/$(t): $(OBJ_DIR)/$($(t)_src:.cpp=.o))\
 )
 
-$(BIN_DIR)/%:
+
+# Only link actual targets, not .o files
+$(BIN_DIR)/%: $(OBJ_DIR)/%.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
 
-# CUDA
-$(foreach t,$(TARGETS_CUDA),\
-  $(eval $(BIN_DIR)/$(t): $(OBJ_DIR)/$($(t)_src:.cu=.o))\
-)
+# Prevent selection_main.o from being linked as a standalone executable
+$(BIN_DIR)/selection_main.o:
+	@true
 
-$(BIN_DIR)/%_cuda:
+# CUDA
+$(BIN_DIR)/selection_cuda: $(OBJ_DIR)/src/selection_main.o $(OBJ_DIR)/src/selection_cuda.o
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
 
