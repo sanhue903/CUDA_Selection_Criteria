@@ -9,7 +9,7 @@
 #include <zlib.h>
 #include <cuda_runtime.h>
 #include <include/metrictime2.hpp>
-#include <include/criteria_smh.cuh>  // Tu header device
+#include <include/criteria_sketch_cuda.cuh> 
 
 // -------------------------------------------
 // Utilidad: lectura sketch SMH desde disco
