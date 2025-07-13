@@ -168,7 +168,14 @@ void load_file_list (std::vector<std::string> & files, std::string & list_file, 
 		exit (-1);
 	}
 
-	while (getline (file, line)) files.push_back (path + line);
+	while (getline (file, line)) {
+		// Remove leading/trailing whitespace and carriage returns
+		line.erase(0, line.find_first_not_of(" \t\r\n"));
+		line.erase(line.find_last_not_of(" \t\r\n") + 1);
+		if (!line.empty()) {
+			files.push_back(path + line);
+		}
+	}
 	file.close();
 }
 
@@ -218,70 +225,70 @@ int main(int argc, char *argv[])
   std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll14;
   for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
   {
-    std::string filename = files.at (i_processed);
-    name2hll14[filename] = std::make_shared<sketch::hll_t> (14);
+	std::string filename = files.at (i_processed);
+	name2hll14[filename] = std::make_shared<sketch::hll_t> (14);
   }
 
   #pragma omp parallel for schedule(dynamic)
   for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
   {
-    std::string filename = files.at (i_processed);
-    sketch_hll(name2hll14[filename], filename, k);
-    write_hll(name2hll14[filename],filename + ".hll");
+	std::string filename = files.at (i_processed);
+	sketch_hll(name2hll14[filename], filename, k);
+	write_hll(name2hll14[filename],filename + ".hll");
   }
 
   // Auxiliary sketches of criteria
   if (criterion == "hll_a"){
-      uint p = __builtin_ctz (aux_bytes);
-      std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        name2hll[filename] = std::make_shared<sketch::hll_t> (p);
-      }
+	  uint p = __builtin_ctz (aux_bytes);
+	  std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		name2hll[filename] = std::make_shared<sketch::hll_t> (p);
+	  }
 
-      #pragma omp parallel for schedule(dynamic)
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        sketch_hll(name2hll[filename], filename, k);
-        write_hll(name2hll[filename],filename + ".hll_" + std::to_string(p));
-      }
+	  #pragma omp parallel for schedule(dynamic)
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		sketch_hll(name2hll[filename], filename, k);
+		write_hll(name2hll[filename],filename + ".hll_" + std::to_string(p));
+	  }
   }else if (criterion == "hll_an"){
-      uint p = __builtin_ctz (aux_bytes);
-      std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        name2hll[filename] = std::make_shared<sketch::hll_t> (p);
-      }
+	  uint p = __builtin_ctz (aux_bytes);
+	  std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		name2hll[filename] = std::make_shared<sketch::hll_t> (p);
+	  }
 
-      #pragma omp parallel for schedule(dynamic)
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        sketch_hll(name2hll[filename], filename, k);
-        write_hll(name2hll[filename],filename + ".hll_" + std::to_string(p));
-      }
+	  #pragma omp parallel for schedule(dynamic)
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		sketch_hll(name2hll[filename], filename, k);
+		write_hll(name2hll[filename],filename + ".hll_" + std::to_string(p));
+	  }
   }else if (criterion == "smh_a"){
-      uint m = aux_bytes/8;
-      std::map<std::string, std::shared_ptr<sketch::SuperMinHash<>>> name2smh;
+	  uint m = aux_bytes/8;
+	  std::map<std::string, std::shared_ptr<sketch::SuperMinHash<>>> name2smh;
 
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        name2smh[filename] = std::make_shared<sketch::SuperMinHash<>> (m);
-      }
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		name2smh[filename] = std::make_shared<sketch::SuperMinHash<>> (m);
+	  }
 
-      #pragma omp parallel for schedule(dynamic)
-      for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-      {
-        std::string filename = files.at (i_processed);
-        sketch_smh (name2smh[filename], filename, k);
-        write_smh(name2smh[filename],filename + ".smh"+std::to_string(m));
-      }
+	  #pragma omp parallel for schedule(dynamic)
+	  for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+	  {
+		std::string filename = files.at (i_processed);
+		sketch_smh (name2smh[filename], filename, k);
+		write_smh(name2smh[filename],filename + ".smh"+std::to_string(m));
+	  }
   }else{
-      printf("Option -c invalid. The accepted criteria are hll_a, hll_an and smh_a.\n");
+	  printf("Option -c invalid. The accepted criteria are hll_a, hll_an and smh_a.\n");
   }
 
 	return 0;
