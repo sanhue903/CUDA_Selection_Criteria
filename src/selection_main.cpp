@@ -48,7 +48,14 @@ void load_file_list(std::vector<std::string>& files, std::string& list_file, std
         std::cerr << "No valid input file provided\n";
         exit(-1);
     }
-    while (getline(file, line)) files.push_back(path + line);
+    while (getline(file, line)) {
+        // Remove leading/trailing whitespace and carriage returns
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (!line.empty()) {
+            files.push_back(path + line);
+        }
+    }
     file.close();
 }
 

@@ -10,49 +10,56 @@
 // read_hll()
 
 std::vector<uint64_t> read_smh(std::string path){
-	//std::vector<uint64_t> smh_vector = smh->h_;
-	//uint32_t smh_size = smh->m_;
+  //std::vector<uint64_t> smh_vector = smh->h_;
+  //uint32_t smh_size = smh->m_;
         gzFile fp(gzopen(path.data(), "rb"));
         if(fp == nullptr) throw std::runtime_error(std::string("Could not open file at '") + path + "' for reading");
 
-	//read
-	uint32_t smh_size;
-	if(static_cast<uint64_t>(gzread(fp, &smh_size, sizeof(smh_size))) != sizeof(smh_size)) {
+  //read
+  uint32_t smh_size;
+  if(static_cast<uint64_t>(gzread(fp, &smh_size, sizeof(smh_size))) != sizeof(smh_size)) {
             throw sketch::exception::ZlibError(std::string("Error reading from file\n"));
         }
 
-	std::vector<uint64_t> smh_vector(smh_size);
-	if(static_cast<uint64_t>(gzread(fp, smh_vector.data(), smh_vector.size() * sizeof(smh_vector[0]))) != smh_vector.size() * sizeof(smh_vector[0])) {
+  std::vector<uint64_t> smh_vector(smh_size);
+  if(static_cast<uint64_t>(gzread(fp, smh_vector.data(), smh_vector.size() * sizeof(smh_vector[0]))) != smh_vector.size() * sizeof(smh_vector[0])) {
             throw sketch::exception::ZlibError(std::string("Error reading from file\n"));
         }
 
-	
-	gzclose(fp);
+  
+  gzclose(fp);
 
-	return smh_vector;
+  return smh_vector;
 }
 
 
 void load_file_list (std::vector<std::string> & files, std::string & list_file, std::string path = "")
 {
-	std::string line;
+  std::string line;
 
-	if (list_file.empty ())
-	{
-		std::cerr << "No input file provided\n";
-		exit (-1);
-	}
+  if (list_file.empty ())
+  {
+    std::cerr << "No input file provided\n";
+    exit (-1);
+  }
 
-	std::ifstream file (list_file);
+  std::ifstream file (list_file);
 
-	if (!file.is_open ())
-	{
-		std::cerr << "No valid input file provided\n";
-		exit (-1);
-	}
+  if (!file.is_open ())
+  {
+    std::cerr << "No valid input file provided\n";
+    exit (-1);
+  }
 
-	while (getline (file, line)) files.push_back (path + line);
-	file.close();
+    while (getline (file, line)) {
+        // Remove leading/trailing whitespace and carriage returns
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (!line.empty()) {
+            files.push_back(path + line);
+        }
+    }
+  file.close();
 }
 
 
@@ -62,58 +69,58 @@ void load_file_list (std::vector<std::string> & files, std::string & list_file, 
 
 int main(int argc, char *argv[])
 {
-	// Paso 0: Cargar parámetros ##############################
-	std::vector<std::string> files;
+  // Paso 0: Cargar parámetros ##############################
+  std::vector<std::string> files;
 
-	//const uint k = 31;
-	float z_score = 1.96;
-	int order_n = 1;
-	std::string list_file = "";
-	uint threads = 8;
-	uint aux_bytes = 256;
-	float threshold = 0.9;
+  //const uint k = 31;
+  float z_score = 1.96;
+  int order_n = 1;
+  std::string list_file = "";
+  uint threads = 8;
+  uint aux_bytes = 256;
+  float threshold = 0.9;
   std::string criterion = "";
-	char c;
+  char c;
 
 
-	while ((c = getopt(argc, argv, "xl:t:a:h:c:")) != -1)
-	{
-		switch (c) {
-			case 'x':
-				std::cout << "Usage: -l -t -a -h -c\n";
-				return 0;
-				break;
-			case 'l':
-				list_file = std::string (optarg);
-				break;
-			case 't':
-				threads = std::stoi (optarg);
-				break;
-			case 'a':
-				aux_bytes = std::stoi (optarg);
-				break;
-			case 'h':
-				threshold = std::stof (optarg);
-				break;
-			case 'c':
-				criterion = std::string (optarg);
-				break;
-			default:
-				break;
-		}
-	}
+  while ((c = getopt(argc, argv, "xl:t:a:h:c:")) != -1)
+  {
+    switch (c) {
+      case 'x':
+        std::cout << "Usage: -l -t -a -h -c\n";
+        return 0;
+        break;
+      case 'l':
+        list_file = std::string (optarg);
+        break;
+      case 't':
+        threads = std::stoi (optarg);
+        break;
+      case 'a':
+        aux_bytes = std::stoi (optarg);
+        break;
+      case 'h':
+        threshold = std::stof (optarg);
+        break;
+      case 'c':
+        criterion = std::string (optarg);
+        break;
+      default:
+        break;
+    }
+  }
 
-	// Inicializar variables:
-	omp_set_num_threads (threads);
-	load_file_list (files, list_file);
+  // Inicializar variables:
+  omp_set_num_threads (threads);
+  load_file_list (files, list_file);
 
-	std::vector<std::pair<std::string, double>> card_name (files.size ());
-	std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll14;
-	std::string out[files.size()];
+  std::vector<std::pair<std::string, double>> card_name (files.size ());
+  std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll14;
+  std::string out[files.size()];
 
   // hll_a is cb+hll_a
   if (criterion == "hll_a"){
-	  // Read sketches from disk and order according to reported cardinality of primary hll sketch
+    // Read sketches from disk and order according to reported cardinality of primary hll sketch
     std::map<std::string, std::shared_ptr<sketch::hll_t>> name2aux;
     uint p = __builtin_ctz (aux_bytes);
 
@@ -166,7 +173,7 @@ int main(int argc, char *argv[])
     }
 
   }else if (criterion == "hll_an"){
-	  // Read sketches from disk and order according to reported cardinality of primary hll sketch
+    // Read sketches from disk and order according to reported cardinality of primary hll sketch
     std::map<std::string, std::shared_ptr<sketch::hll_t>> name2aux;
     uint p = __builtin_ctz (aux_bytes);
 
@@ -219,7 +226,7 @@ int main(int argc, char *argv[])
       out[i_processed] = out_str;
     }
   }else if (criterion == "smh_a"){
-	  // Read sketches from disk and order according to reported cardinality of primary hll sketch
+    // Read sketches from disk and order according to reported cardinality of primary hll sketch
     std::map<std::string, std::vector<uint64_t>> name2aux;
     uint m = aux_bytes/8;
 
@@ -287,11 +294,11 @@ int main(int argc, char *argv[])
   }
 
 
-	for (size_t i_processed = 0; i_processed < card_name.size (); ++i_processed)
-	{
+  for (size_t i_processed = 0; i_processed < card_name.size (); ++i_processed)
+  {
       std::cout << out[i_processed];
-	}
+  }
 
 
-	return 0;
+  return 0;
 }
