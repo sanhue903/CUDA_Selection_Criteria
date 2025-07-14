@@ -1,3 +1,4 @@
+// selection_main.cpp
 
 #include "sketch/sketch.h"
 #include <fstream>
@@ -13,10 +14,9 @@
 #include "include/criteria_sketch.hpp"
 #include "include/criteria_sketch_cuda.cuh"
 
-extern "C" {
-    void kernel_smh(const uint64_t*, const double*, int, int, int, int, double, int*);
-    void kernel_CBsmh(const uint64_t*, const double*, int, int, int, int, double, int*);
-}
+// WRAPPERS: Call these, not the __global__ functions!
+extern "C" void launch_kernel_smh(const uint64_t*, const double*, int, int, int, int, double, int*, int);
+extern "C" void launch_kernel_CBsmh(const uint64_t*, const double*, int, int, int, int, double, int*, int);
 
 // Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
@@ -155,14 +155,10 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
 
     int block = 256;
-    int grid = (total_pairs + block - 1) / block;
 
-    // --- Launch CUDA kernels
-    kernel_smh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out1);
-    cudaDeviceSynchronize();
-
-    kernel_CBsmh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out2);
-    cudaDeviceSynchronize();
+    // --- Launch CUDA kernels via wrappers!
+    launch_kernel_smh(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out1, block);
+    launch_kernel_CBsmh(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out2, block);
 
     // --- Copy results back
     std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
@@ -172,7 +168,6 @@ int main(int argc, char *argv[]) {
     cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2);
 
     // --- Output results with final Jaccard computation (CPU)
-    // For all pairs (i < k):
     for (int idx = 0, i = 0; i < N - 1; ++i) {
         std::string fn1 = card_name[i].first;
         double e1 = card_name[i].second;
