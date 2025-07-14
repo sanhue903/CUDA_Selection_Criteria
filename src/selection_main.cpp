@@ -13,10 +13,8 @@
 #include <cuda_runtime.h>
 #include "include/criteria_sketch.hpp"
 #include "include/criteria_sketch_cuda.cuh"
+#include "selection_cuda_wrapper.hpp"
 
-// WRAPPERS: Call these, not the __global__ functions!
-extern "C" void launch_kernel_smh(const uint64_t*, const double*, int, int, int, int, double, int*, int);
-extern "C" void launch_kernel_CBsmh(const uint64_t*, const double*, int, int, int, int, double, int*, int);
 
 // Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
