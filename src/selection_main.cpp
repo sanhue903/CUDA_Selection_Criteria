@@ -1,22 +1,27 @@
+
 #include "sketch/sketch.h"
 #include <fstream>
 #include <iostream>
-#include <seqan/seq_io.h>
 #include <vector>
 #include <map>
 #include <string>
 #include <cmath>
-#include <zlib.h>
-#include "criteria_sketch_cuda.cuh"
-#include "selection_cuda_wrapper.hpp"
+#include <algorithm>
+#include <memory>
+#include <getopt.h>
+#include <cuda_runtime.h>
+#include "include/criteria_sketch.hpp"
+#include "include/criteria_sketch_cuda.cuh"
 
-// -------------------------------------------------------------------
-// FUNCIONES DE UTILIDAD 
-// -------------------------------------------------------------------
+extern "C" {
+    void kernel_smh(const uint64_t*, const double*, int, int, int, int, double, int*);
+    void kernel_CBsmh(const uint64_t*, const double*, int, int, int, int, double, int*);
+}
 
+// Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
     gzFile fp(gzopen(path.data(), "rb"));
-    if(fp == nullptr) throw std::runtime_error(std::string("Could not open file at '") + path + "' for reading");
+    if(fp == nullptr) throw std::runtime_error("Could not open file at '" + path + "' for reading");
 
     uint32_t smh_size;
     if(static_cast<uint64_t>(gzread(fp, &smh_size, sizeof(smh_size))) != sizeof(smh_size)) {
@@ -32,9 +37,9 @@ std::vector<uint64_t> read_smh(std::string path) {
     return smh_vector;
 }
 
-void load_file_list (std::vector<std::string> & files, std::string & list_file, std::string path = "") {
+void load_file_list(std::vector<std::string>& files, std::string& list_file, std::string path = "") {
     std::string line;
-    if (list_file.empty ()) {
+    if (list_file.empty()) {
         std::cerr << "No input file provided\n";
         exit(-1);
     }
@@ -47,19 +52,14 @@ void load_file_list (std::vector<std::string> & files, std::string & list_file, 
     file.close();
 }
 
-int main(int argc, char *argv[])
-{
-    // --------- PARÁMETROS Y ARGUMENTOS --------------
+int main(int argc, char *argv[]) {
     std::vector<std::string> files;
-    float z_score = 1.96;
-    int order_n = 1;
     std::string list_file = "";
-    uint threads = 8;
-    uint aux_bytes = 256;
     float threshold = 0.9;
-    std::string criterion = "";
-    char c;
+    int aux_bytes = 256;  // will use as m = aux_bytes/8
+    std::string criterion = "smh_a";
 
+    char c;
     while ((c = getopt(argc, argv, "xl:t:a:h:c:")) != -1) {
         switch (c) {
             case 'x':
@@ -67,9 +67,6 @@ int main(int argc, char *argv[])
                 return 0;
             case 'l':
                 list_file = std::string(optarg);
-                break;
-            case 't':
-                threads = std::stoi(optarg);
                 break;
             case 'a':
                 aux_bytes = std::stoi(optarg);
@@ -87,65 +84,101 @@ int main(int argc, char *argv[])
 
     load_file_list(files, list_file);
 
-    std::vector<std::pair<std::string, double>> card_name(files.size());
-    std::map<std::string, std::vector<uint64_t>> name2aux;
-    uint m = aux_bytes / 8;
+    int m = aux_bytes / 8;
+    int N = files.size();
 
-    // ------- LEE Y GUARDA LOS SKETCHES Y CARDINALIDADES ---------
-    for (size_t i = 0; i < files.size(); ++i) {
+    // Read sketches and cardinalities, build mappings
+    std::vector<std::pair<std::string, double>> card_name(N);
+    std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll14;
+    std::map<std::string, std::vector<uint64_t>> name2aux;
+    for (int i = 0; i < N; ++i) {
         std::string filename = files.at(i);
+        name2hll14[filename] = std::make_shared<sketch::hll_t>(filename + ".hll");
         name2aux[filename] = read_smh(filename + ".smh" + std::to_string(m));
     }
 
-    std::vector<double> cardinalidades(files.size());
-    for (size_t i = 0; i < files.size(); ++i) {
-        // Aquí deberías calcular la cardinalidad real de cada archivo:
-        // (por ahora usamos el tamaño del sketch como dummy)
-        cardinalidades[i] = static_cast<double>(m);  // <--- Modifica si tienes la real
-        card_name.at(i) = std::make_pair(files[i], cardinalidades[i]);
+    // Calculate cardinalities
+    for (int i = 0; i < N; ++i) {
+        auto c = name2hll14[files[i]]->report();
+        card_name.at(i) = std::make_pair(files[i], c);
     }
 
-    // ---- ORDENAR POR CARDINALIDAD
+    // Sort by cardinality
     std::sort(card_name.begin(), card_name.end(),
-        [](const std::pair<std::string, double> &x, const std::pair<std::string, double> &y) {
-            return x.second < y.second;
-        });
+              [](const std::pair<std::string, double>& x,
+                 const std::pair<std::string, double>& y) {
+                  return x.second < y.second;
+              });
 
-    // ---- REORDENAR SKETCHES Y CARDINALIDADES EN ORDEN
-    std::vector<uint64_t> sketches_flat(files.size() * m);
-    std::vector<double> cards_sorted(files.size());
-    for (size_t i = 0; i < card_name.size(); ++i) {
-        const std::string& fname = card_name[i].first;
-        std::copy(name2aux[fname].begin(), name2aux[fname].end(), sketches_flat.begin() + i * m);
-        cards_sorted[i] = card_name[i].second;
-    }
-
-    // ---- PARÁMETROS DE LSH ----
+    // Compute n_rows and n_bands
     int n_rows = 1, n_bands = 1;
-    for (uint band = 1; band <= m; band++) {
+    for (int band = 1; band <= m; ++band) {
         if (m % band != 0) continue;
-        n_bands = band;
-        n_rows = m / n_bands;
         float P_r = 1.0 - pow(1.0 - pow(threshold, (float)m / band), (float)band);
         if (P_r >= 0.95) {
+            n_bands = band;
+            n_rows = m / band;
             break;
         }
     }
 
-    int num_files = files.size();
-    int sketch_size = m;
-    int total_pairs = num_files * (num_files - 1) / 2;
+    // Flatten sketches and cards to arrays
+    std::vector<uint64_t> sketches_flat(N * m);
+    std::vector<double> cards_sorted(N);
+    for (int i = 0; i < N; ++i) {
+        std::copy(name2aux[card_name[i].first].begin(),
+                  name2aux[card_name[i].first].end(),
+                  sketches_flat.begin() + i * m);
+        cards_sorted[i] = card_name[i].second;
+    }
 
-    // ---- LLAMAR CUDA DESDE WRAPPER ----
-    std::vector<int> h_result(total_pairs);
-    launch_comparar_pares_smh(sketches_flat.data(), cards_sorted.data(), num_files, sketch_size, n_rows, n_bands, threshold, h_result.data());
+    // --- Allocate/copy on GPU
+    uint64_t* d_sk;
+    double* d_cd;
+    int* d_out1;
+    int* d_out2;
+    int total_pairs = N * (N - 1) / 2;
 
-    // ---- IMPRIMIR PARES QUE PASAN ----
-    for (int idx = 0; idx < total_pairs; ++idx) {
-        if (h_result[idx]) {
-            int i = num_files - 2 - int(std::sqrt(-8 * idx + 4 * num_files * (num_files - 1) - 7) / 2.0 - 0.5);
-            int k = idx + i + 1 - num_files * (num_files - 1) / 2 + (num_files - i) * ((num_files - i) - 1) / 2;
-            std::cout << card_name[i].first << " " << card_name[k].first << " PASA smh_a\n";
+    cudaMalloc(&d_sk,  sketches_flat.size() * sizeof(uint64_t));
+    cudaMalloc(&d_cd,  cards_sorted.size() * sizeof(double));
+    cudaMalloc(&d_out1, total_pairs * sizeof(int));
+    cudaMalloc(&d_out2, total_pairs * sizeof(int));
+
+    cudaMemcpy(d_sk, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+
+    int block = 256;
+    int grid = (total_pairs + block - 1) / block;
+
+    // --- Launch CUDA kernels
+    kernel_smh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out1);
+    cudaDeviceSynchronize();
+
+    kernel_CBsmh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out2);
+    cudaDeviceSynchronize();
+
+    // --- Copy results back
+    std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
+    cudaMemcpy(smh_result.data(), d_out1, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(cbsmh_result.data(), d_out2, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2);
+
+    // --- Output results with final Jaccard computation (CPU)
+    // For all pairs (i < k):
+    for (int idx = 0, i = 0; i < N - 1; ++i) {
+        std::string fn1 = card_name[i].first;
+        double e1 = card_name[i].second;
+        for (int k = i + 1; k < N; ++k, ++idx) {
+            std::string fn2 = card_name[k].first;
+            double e2 = card_name[k].second;
+            if (cbsmh_result[idx] == 1) {
+                double t = name2hll14[fn1]->union_size(*name2hll14[fn2]);
+                double jacc14 = (e1 + e2 - t) / t;
+                if (jacc14 >= threshold) {
+                    std::cout << fn1 << " " << fn2 << " " << jacc14 << "\n";
+                }
+            }
         }
     }
 
