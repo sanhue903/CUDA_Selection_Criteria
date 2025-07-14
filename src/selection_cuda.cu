@@ -23,7 +23,7 @@ __global__ void kernel_smh(const uint64_t* sketches,
     const uint64_t* v1 = sketches + i*sketch_size;
     const uint64_t* v2 = sketches + k*sketch_size;
 
-    out[idx] = smh_a(v1, v2, n_rows, n_bands, sketch_size);
+    out[idx] = smh_a(v1, v2, n_rows, n_bands);
 }
 
 // === kernel 2: CB + smh_a  ==============================================
@@ -47,7 +47,7 @@ __global__ void kernel_CBsmh(const uint64_t* sketches,
 
     const uint64_t* v1 = sketches + i*sketch_size;
     const uint64_t* v2 = sketches + k*sketch_size;
-    out[idx] = smh_a(v1, v2, n_rows, n_bands, sketch_size);
+    out[idx] = smh_a(v1, v2, n_rows, n_bands);
 }
 
 // === WRAPPERS ===========================================================
