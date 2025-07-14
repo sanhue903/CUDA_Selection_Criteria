@@ -253,14 +253,14 @@ int main(int argc, char *argv[])
 
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
-        std::cout << list_file << ";smh_a_cuda;" << threshold << ";";
+        std::cout << list_file << ";smh_a;" << threshold << ";";
         TIMERSTART(criterio_smh_cuda)
         launch_kernel_smh(d_sk, d_cd, N, mh_size, n_rows, n_bands, threshold, d_out1, block, grid);
         TIMERSTOP(criterio_smh_cuda)
         std::cout << ";r:" << n_rows << "_" << "b:" << n_bands << "\n";
 
         // ---- CB+SMH CUDA
-        std::cout << list_file << ";CB+smh_a_cuda;" << threshold << ";";
+        std::cout << list_file << ";CB+smh_a;" << threshold << ";";
         TIMERSTART(criterio_CBsmh_cuda)
         launch_kernel_CBsmh(d_sk, d_cd, N, mh_size, n_rows, n_bands, threshold, d_out2, block, grid);
         TIMERSTOP(criterio_CBsmh_cuda)
