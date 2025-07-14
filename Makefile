@@ -19,45 +19,33 @@ CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
              -arch=sm_86 -DNDEBUG -lineinfo
 LDFLAGS_CUDA := -lcudart -lm -lz
 
+
 INCLUDE := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
            -Iseqan-library-2.4.0/include -Iinclude
+
 
 BUILD    := build
 OBJ_DIR  := $(BUILD)/objects
 BIN_DIR  := $(BUILD)
 
-###############################################################################
-# Fuentes individuales por ejecutable
-###############################################################################
-# CPU
-time_smh_src      := experiments/src/time_smh.cpp
-build_sketch_src  := src/build_sketch.cpp
-selection_src     := src/selection.cpp
 
-# CUDA
-# (Si luego agregas build_sketch_cuda o time_smh_cuda, solo los agregas aquí)
-selection_cuda_src := src/selection_cuda.cu
-selection_main_src := src/selection_main.cpp
+# Sources
+time_smh_src          := experiments/src/time_smh.cpp
+build_sketch_src      := src/build_sketch.cpp
+selection_src         := src/selection.cpp
+selection_main_src    := src/selection_main.cpp
+selection_cuda_src    := src/selection_cuda.cu
 
-###############################################################################
-# Listas de fuentes
-###############################################################################
-SRCS_CPU  := $(time_smh_src) $(build_sketch_src) $(selection_src)
-SRCS_CUDA := $(selection_cuda_src) $(selection_main_src)
-SRCS      := $(SRCS_CPU) $(SRCS_CUDA)
+# Objects
+OBJECTS_CPU   := $(OBJ_DIR)/experiments/src/time_smh.o \
+                 $(OBJ_DIR)/src/build_sketch.o \
+                 $(OBJ_DIR)/src/selection.o
 
-###############################################################################
-# Listas de objetos
-###############################################################################
-OBJECTS_CPU  := $(SRCS_CPU:%.cpp=$(OBJ_DIR)/%.o)
-OBJECTS_CUDA := $(selection_main_src:src/%.cpp=$(OBJ_DIR)/src/%.o) \
-                $(selection_cuda_src:src/%.cu=$(OBJ_DIR)/src/%.o)
-OBJECTS      := $(OBJECTS_CPU) $(OBJECTS_CUDA)
+OBJECTS_CUDA  := $(OBJ_DIR)/src/selection_main.o \
+                 $(OBJ_DIR)/src/selection_cuda.o
 
-###############################################################################
-# Binarios a generar
-###############################################################################
-BINARIES_CPU  := $(addprefix $(BIN_DIR)/,$(TARGETS_CPU))
+BINARIES_CPU  := $(BIN_DIR)/time_smh $(BIN_DIR)/build_sketch $(BIN_DIR)/selection
+
 BINARIES_CUDA := $(BIN_DIR)/selection_cuda
 BINARIES      := $(BINARIES_CPU) $(BINARIES_CUDA)
 
@@ -77,10 +65,10 @@ $(OBJ_DIR)/%.o: %.cu
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) -c $< -o $@
 
-###############################################################################
-# 9. Enlazar ejecutables
-###############################################################################
-# CPU targets (uno a uno, limpio y claro)
+
+# ------------------------ 9. Enlazar ejecutables -----------------------------
+# CPU
+
 $(BIN_DIR)/time_smh: $(OBJ_DIR)/experiments/src/time_smh.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
@@ -97,6 +85,10 @@ $(BIN_DIR)/selection: $(OBJ_DIR)/src/selection.o
 $(BIN_DIR)/selection_cuda: $(OBJ_DIR)/src/selection_main.o $(OBJ_DIR)/src/selection_cuda.o
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
+
+# Prevent accidental linkage of selection_main.o as a standalone executable
+$(BIN_DIR)/selection_main.o:
+	@true
 
 build:
 	@mkdir -p $(OBJ_DIR)
