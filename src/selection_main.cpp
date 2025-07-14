@@ -153,10 +153,11 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_cards, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
 
     int block = 256;
+    int grid = (total_pairs + block - 1) / block;
 
     // --- Launch CUDA kernels via wrappers!
-    launch_kernel_smh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out1, block);
-    launch_kernel_CBsmh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out2, block);
+    launch_kernel_smh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out1, block, grid);
+    launch_kernel_CBsmh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out2, block, grid);
 
     // --- Copy results back
     std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
