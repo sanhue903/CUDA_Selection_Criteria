@@ -3,7 +3,7 @@
 LISTA="test_influeza_filelist.txt"
 THRESHOLD="0.9"
 REPS=100
-THREADS_ARR=(8)
+THREADS_ARR=(1 8)
 MH_SIZE_ARR=(16 32 64 128 256 512 1024)
 
 CPU_BINARY="./build/time_smh"
@@ -25,15 +25,13 @@ for T in "${THREADS_ARR[@]}"; do
 done
 
 # ----------- GPU (CUDA) -----------
-for T in "${THREADS_ARR[@]}"; do
-  for M in "${MH_SIZE_ARR[@]}"; do
+for M in "${MH_SIZE_ARR[@]}"; do
     for REP in $(seq 1 $REPS); do
-      OUTPUT=$($GPU_BINARY -l $LISTA -h $THRESHOLD -m $M)
-      echo "$OUTPUT" | grep ';build_smh;'   | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",build_smh,"$4}'   >> $LOG
-      echo "$OUTPUT" | grep ';smh_a;'       | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",smh_a,"$4}'       >> $LOG
-      echo "$OUTPUT" | grep ';CB+smh_a;'    | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",CB+smh_a,"$4}'    >> $LOG
+        OUTPUT=$($GPU_BINARY -l $LISTA -h $THRESHOLD -m $M)
+        echo "$OUTPUT" | grep ';build_smh;'   | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",build_smh,"$4}'   >> $LOG
+        echo "$OUTPUT" | grep ';smh_a;'       | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",smh_a,"$4}'       >> $LOG
+        echo "$OUTPUT" | grep ';CB+smh_a;'    | awk -F';' -v t=$T -v m=$M -v r=$REP '{print "gpu,"t","m","r",CB+smh_a,"$4}'    >> $LOG
     done
-  done
 done
 
 echo "Listo, resultados en $LOG"
