@@ -138,32 +138,32 @@ int main(int argc, char *argv[]) {
     }
 
     // --- Allocate/copy on GPU
-    uint64_t* d_sk;
-    double* d_cd;
+    uint64_t* d_sketches;
+    double* d_cards;
     int* d_out1;
     int* d_out2;
     int total_pairs = N * (N - 1) / 2;
 
-    cudaMalloc(&d_sk,  sketches_flat.size() * sizeof(uint64_t));
-    cudaMalloc(&d_cd,  cards_sorted.size() * sizeof(double));
+    cudaMalloc(&d_sketches,  sketches_flat.size() * sizeof(uint64_t));
+    cudaMalloc(&d_cards,  cards_sorted.size() * sizeof(double));
     cudaMalloc(&d_out1, total_pairs * sizeof(int));
     cudaMalloc(&d_out2, total_pairs * sizeof(int));
 
-    cudaMemcpy(d_sk, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_sketches, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_cards, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
 
     int block = 256;
 
     // --- Launch CUDA kernels via wrappers!
-    launch_kernel_smh(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out1, block);
-    launch_kernel_CBsmh(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out2, block);
+    launch_kernel_smh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out1, block);
+    launch_kernel_CBsmh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out2, block);
 
     // --- Copy results back
     std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
     cudaMemcpy(smh_result.data(), d_out1, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(cbsmh_result.data(), d_out2, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
 
-    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2);
+    cudaFree(d_sketches); cudaFree(d_cards); cudaFree(d_out1); cudaFree(d_out2);
 
     // --- Output results with final Jaccard computation (CPU)
     for (int idx = 0, i = 0; i < N - 1; ++i) {
