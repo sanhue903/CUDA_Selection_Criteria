@@ -29,8 +29,7 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
 
 __device__ bool CB_smh_a(double tau, double card_A, double card_B,
                          const uint64_t* v1, const uint64_t* v2, uint n_rows, uint n_bands) {
-    if (!CB(tau, card_A, card_B)) return false;
-    return smh_a(v1, v2, n_rows, n_bands);
+    return CB(tau, card_A, card_B) || smh_a(v1, v2, n_rows, n_bands);
 }
 #endif
 
