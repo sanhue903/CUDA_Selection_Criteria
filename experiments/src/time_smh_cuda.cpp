@@ -18,77 +18,82 @@
 
 uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 {
-	uint64_t reverse = 0;
-	uint64_t b_kmer = kmer;
+    uint64_t reverse = 0;
+    uint64_t b_kmer = kmer;
 
-	kmer = ((kmer >> 2)  & 0x3333333333333333UL) | ((kmer & 0x3333333333333333UL) << 2);
-	kmer = ((kmer >> 4)  & 0x0F0F0F0F0F0F0F0FUL) | ((kmer & 0x0F0F0F0F0F0F0F0FUL) << 4);
-	kmer = ((kmer >> 8)  & 0x00FF00FF00FF00FFUL) | ((kmer & 0x00FF00FF00FF00FFUL) << 8);
-	kmer = ((kmer >> 16) & 0x0000FFFF0000FFFFUL) | ((kmer & 0x0000FFFF0000FFFFUL) << 16);
-	kmer = ( kmer >> 32                        ) | ( kmer                         << 32);
-	reverse = (((uint64_t)-1) - kmer) >> (8 * sizeof(kmer) - (k << 1));
+    kmer = ((kmer >> 2)  & 0x3333333333333333UL) | ((kmer & 0x3333333333333333UL) << 2);
+    kmer = ((kmer >> 4)  & 0x0F0F0F0F0F0F0F0FUL) | ((kmer & 0x0F0F0F0F0F0F0F0FUL) << 4);
+    kmer = ((kmer >> 8)  & 0x00FF00FF00FF00FFUL) | ((kmer & 0x00FF00FF00FF00FFUL) << 8);
+    kmer = ((kmer >> 16) & 0x0000FFFF0000FFFFUL) | ((kmer & 0x0000FFFF0000FFFFUL) << 16);
+    kmer = ( kmer >> 32                        ) | ( kmer                         << 32);
+    reverse = (((uint64_t)-1) - kmer) >> (8 * sizeof(kmer) - (k << 1));
 
-	return (b_kmer < reverse) ? b_kmer : reverse;
+    return (b_kmer < reverse) ? b_kmer : reverse;
 }
 
 void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, uint k)
 {
-	sketch::SuperMinHash<> smh(mh_vector.size()-1);
-	seqan::SeqFileIn seqFileIn;
-	if (!open(seqFileIn, filename.c_str ()))
-	{
-		std::cerr << "ERROR: Could not open the file " << filename << ".\n";
-		return;
-	}
+    sketch::SuperMinHash<> smh(mh_vector.size()-1);
+       seqan::SeqFileIn seqFileIn;
+       if (!open(seqFileIn, filename.c_str ()))
+       {
+               // Try opening as gzipped file
+               std::string gz_filename = filename + ".gz";
+               if (!open(seqFileIn, gz_filename.c_str ()))
+               {
+                       std::cerr << "ERROR: Could not open the file " << filename << " or " << gz_filename << ".\n";
+                       return;
+               }
+       }
 
-	seqan::CharString id;
-	seqan::IupacString seq;
+    seqan::CharString id;
+    seqan::IupacString seq;
 
-	while (!atEnd (seqFileIn))
-	{
-		try {
-			seqan::readRecord(id, seq, seqFileIn);
-		}
-		catch (seqan::ParseError &a) {
-			break;
-		}
+    while (!atEnd (seqFileIn))
+    {
+        try {
+            seqan::readRecord(id, seq, seqFileIn);
+        }
+        catch (seqan::ParseError &a) {
+            break;
+        }
 
-		uint64_t kmer = 0;
-		uint bases = 0;
-		for (size_t i = 0; i < length(seq); ++i)
-		{
-			uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
-			bases++;
+        uint64_t kmer = 0;
+        uint bases = 0;
+        for (size_t i = 0; i < length(seq); ++i)
+        {
+            uint8_t two_bit = 0;//(char (seq[i]) >> 1) & 0x03;
+            bases++;
 
-			switch (char (seq[i]))
-			{
-				case 'A': two_bit = 0; break;
-				case 'C': two_bit = 1; break;
-				case 'G': two_bit = 2; break;
-				case 'T': two_bit = 3; break;
-				case 'a': two_bit = 0; break;
-				case 'c': two_bit = 1; break;
-				case 'g': two_bit = 2; break;
-				case 't': two_bit = 3; break;
-					  // Ignore kmer
-				default: two_bit = 0; bases = 0; kmer = 0; break;
-			}
+            switch (char (seq[i]))
+            {
+                case 'A': two_bit = 0; break;
+                case 'C': two_bit = 1; break;
+                case 'G': two_bit = 2; break;
+                case 'T': two_bit = 3; break;
+                case 'a': two_bit = 0; break;
+                case 'c': two_bit = 1; break;
+                case 'g': two_bit = 2; break;
+                case 't': two_bit = 3; break;
+                      // Ignore kmer
+                default: two_bit = 0; bases = 0; kmer = 0; break;
+            }
 
-			kmer = (kmer << 2) | two_bit;
-			kmer = kmer & ((1ULL << (k << 1)) - 1);
+            kmer = (kmer << 2) | two_bit;
+            kmer = kmer & ((1ULL << (k << 1)) - 1);
 
-			if (bases == k)
-			{
-				//s->add (XXH3_64bits ((const void *) &kmer, sizeof (uint64_t)));
-				smh.addh(canonical_kmer (kmer));
-				bases--;
-			}
-		}
-	}
-	for(size_t i=0;i<mh_vector.size();i++){
-		mh_vector[i] =smh.h_[i];
-	}
-	close (seqFileIn);
+            if (bases == k)
+            {
+                //s->add (XXH3_64bits ((const void *) &kmer, sizeof (uint64_t)));
+                smh.addh(canonical_kmer (kmer));
+                bases--;
+            }
+        }
+    }
+    for(size_t i=0;i<mh_vector.size();i++){
+        mh_vector[i] =smh.h_[i];
+    }
+    close (seqFileIn);
 }
 
 // Function to load file list (reuse)
@@ -103,7 +108,14 @@ void load_file_list(std::vector<std::string> & files, std::string & list_file, s
         std::cerr << "No valid input file provided\n";
         exit (-1);
     }
-    while (getline (file, line)) files.push_back (path + line);
+    while (getline (file, line)) {
+        // Remove leading/trailing whitespace and carriage returns
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+        if (!line.empty()) {
+            files.push_back(path + line);
+        }
+    }
     file.close();
 }
 
@@ -130,7 +142,7 @@ int main(int argc, char *argv[])
     std::string list_file = "";
     uint threads = 8;
     const uint k = 31;
-	const uint sketch_bits = 14;
+    const uint sketch_bits = 14;
     float threshold = 0.9;
     int mh_size = 8;
     int total_rep = 1;
@@ -162,34 +174,34 @@ int main(int argc, char *argv[])
     omp_set_num_threads(threads);
     load_file_list(files, list_file);
 
-	std::cout << list_file << ";build_smh;" << threshold << ";";
-	TIMERSTART(construccion)
-	std::vector<std::pair<std::string, double>> card_name (files.size ());
-	std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
-	std::map<std::string, std::vector<uint64_t>> name2mhv;
-	//int add_mem = 8*mh_size;
+    std::cout << list_file << ";build_smh;" << threshold << ";";
+    TIMERSTART(construccion)
+    std::vector<std::pair<std::string, double>> card_name (files.size ());
+    std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
+    std::map<std::string, std::vector<uint64_t>> name2mhv;
+    //int add_mem = 8*mh_size;
 
-	for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-	{
-		std::string filename = files.at (i_processed);
-		std::vector<uint64_t> v(mh_size);
-		name2hll[filename] = std::make_shared<sketch::hll_t> (sketch_bits);
-		name2mhv[filename] = v;
-	}
+    for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+    {
+        std::string filename = files.at (i_processed);
+        std::vector<uint64_t> v(mh_size);
+        name2hll[filename] = std::make_shared<sketch::hll_t> (sketch_bits);
+        name2mhv[filename] = v;
+    }
 
 
-	#pragma omp parallel for schedule(dynamic)
-	for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
-	{
-		std::string filename = files.at (i_processed);
-		// Cargar .hll de tamaño 2^14 ya antes creados
-		name2hll[filename] = std::make_shared<sketch::hll_t>(filename + ".hll");
-		// Cosntruir nuevos sketches auxiliares (hll y mh)
-		sketch_file (name2mhv[filename], filename, k);
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i_processed = 0; i_processed < files.size (); ++i_processed)
+    {
+        std::string filename = files.at (i_processed);
+        // Cargar .hll de tamaño 2^14 ya antes creados
+        name2hll[filename] = std::make_shared<sketch::hll_t>(filename + ".hll");
+        // Cosntruir nuevos sketches auxiliares (hll y mh)
+        sketch_file (name2mhv[filename], filename, k);
 
-		auto c = name2hll[filename]->report ();
-		card_name.at (i_processed) = std::make_pair (filename, c);
-	}
+        auto c = name2hll[filename]->report ();
+        card_name.at (i_processed) = std::make_pair (filename, c);
+    }
 
     TIMERSTOP(construccion)
     std::cout << ";m:" << mh_size << "\n";

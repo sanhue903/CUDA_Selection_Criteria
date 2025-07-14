@@ -43,11 +43,9 @@ __global__ void kernel_CBsmh(const uint64_t* sketches,
 
     double e1 = cards[i];
     double e2 = cards[k];
-    if (!CB(tau, e1, e2)) { out[idx] = -1; return; }
-
     const uint64_t* v1 = sketches + i*m;
     const uint64_t* v2 = sketches + k*m;
-    out[idx] = smh_a(v1, v2, n_rows, n_bands);
+    out[idx] = CB(tau, e1, e2) || smh_a(v1, v2, n_rows, n_bands);
 }
 
 // === WRAPPERS ===========================================================

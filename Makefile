@@ -20,7 +20,8 @@ CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
 LDFLAGS_CUDA := -lcudart -lm -lz
 
 INCLUDE := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
-           -Iseqan-library-2.4.0/include -Iinclude
+		   -Iseqan-library-2.4.0/include -Iinclude \
+		   -I/usr/local/cuda-12.9/include
 
 
 BUILD    := build
@@ -41,8 +42,8 @@ OBJECTS_CPU   := $(OBJ_DIR)/experiments/src/time_smh.o \
 				 $(OBJ_DIR)/src/selection.o
 
 OBJECTS_CUDA  := $(OBJ_DIR)/src/selection_main.o \
-                 $(OBJ_DIR)/src/selection_cuda.o \
-                 $(OBJ_DIR)/experiments/src/time_smh_cuda.o
+				 $(OBJ_DIR)/src/selection_cuda.o \
+				 $(OBJ_DIR)/experiments/src/time_smh_cuda.o
 
 BINARIES_CPU  := $(BIN_DIR)/time_smh $(BIN_DIR)/build_sketch $(BIN_DIR)/selection
 
