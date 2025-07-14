@@ -3,7 +3,7 @@
 ###############################################################################
 
 TARGETS_CPU  := time_smh build_sketch selection
-TARGETS_CUDA := selection_cuda
+TARGETS_CUDA := selection_cuda time_smh_cuda
 TARGETS      := $(TARGETS_CPU) $(TARGETS_CUDA)
 
 SRC_DIRS := experiments/src src
@@ -19,19 +19,17 @@ CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
 			 -arch=sm_86 -DNDEBUG -lineinfo
 LDFLAGS_CUDA := -lcudart -lm -lz
 
-
 INCLUDE := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
-		   -Iseqan-library-2.4.0/include -Iinclude \
-		   -I/usr/local/cuda-12.9/include
+           -Iseqan-library-2.4.0/include -Iinclude
 
 
 BUILD    := build
 OBJ_DIR  := $(BUILD)/objects
 BIN_DIR  := $(BUILD)
 
-
 # Sources
 time_smh_src          := experiments/src/time_smh.cpp
+time_smh_cuda_src     := experiments/src/time_smh_cuda.cpp
 build_sketch_src      := src/build_sketch.cpp
 selection_src         := src/selection.cpp
 selection_main_src    := src/selection_main.cpp
@@ -43,11 +41,12 @@ OBJECTS_CPU   := $(OBJ_DIR)/experiments/src/time_smh.o \
 				 $(OBJ_DIR)/src/selection.o
 
 OBJECTS_CUDA  := $(OBJ_DIR)/src/selection_main.o \
-				 $(OBJ_DIR)/src/selection_cuda.o
+                 $(OBJ_DIR)/src/selection_cuda.o \
+                 $(OBJ_DIR)/experiments/src/time_smh_cuda.o
 
 BINARIES_CPU  := $(BIN_DIR)/time_smh $(BIN_DIR)/build_sketch $(BIN_DIR)/selection
 
-BINARIES_CUDA := $(BIN_DIR)/selection_cuda
+BINARIES_CUDA := $(BIN_DIR)/selection_cuda $(BIN_DIR)/time_smh_cuda
 BINARIES      := $(BINARIES_CPU) $(BINARIES_CUDA)
 
 ###############################################################################
@@ -66,7 +65,6 @@ $(OBJ_DIR)/%.o: %.cu
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) -c $< -o $@
 
-
 # ------------------------ 9. Enlazar ejecutables -----------------------------
 # CPU
 
@@ -82,8 +80,13 @@ $(BIN_DIR)/selection: $(OBJ_DIR)/src/selection.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
 
-# CUDA target (host+device juntos)
+# CUDA target: selection_cuda (host+device juntos)
 $(BIN_DIR)/selection_cuda: $(OBJ_DIR)/src/selection_main.o $(OBJ_DIR)/src/selection_cuda.o
+	@mkdir -p $(@D)
+	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
+
+# CUDA target: time_smh_cuda (host+device juntos)
+$(BIN_DIR)/time_smh_cuda: $(OBJ_DIR)/experiments/src/time_smh_cuda.o $(OBJ_DIR)/src/selection_cuda.o
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
 
