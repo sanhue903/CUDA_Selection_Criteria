@@ -19,12 +19,15 @@ CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
              -arch=sm_86 -DNDEBUG -lineinfo
 LDFLAGS_CUDA := -lcudart -lm -lz
 
-INCLUDE    := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
-              -I/home/centos/dw/seqan/include -Iinclude
+
+INCLUDE := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
+           -Iseqan-library-2.4.0/include -Iinclude
+
 
 BUILD    := build
 OBJ_DIR  := $(BUILD)/objects
 BIN_DIR  := $(BUILD)
+
 
 # Sources
 time_smh_src          := experiments/src/time_smh.cpp
@@ -42,13 +45,18 @@ OBJECTS_CUDA  := $(OBJ_DIR)/src/selection_main.o \
                  $(OBJ_DIR)/src/selection_cuda.o
 
 BINARIES_CPU  := $(BIN_DIR)/time_smh $(BIN_DIR)/build_sketch $(BIN_DIR)/selection
+
 BINARIES_CUDA := $(BIN_DIR)/selection_cuda
 BINARIES      := $(BINARIES_CPU) $(BINARIES_CUDA)
 
-# ------------------------ 7. Regla por defecto -------------------------------
+###############################################################################
+# 7. Regla por defecto
+###############################################################################
 all: build $(BINARIES)
 
-# ------------------------ 8. Compilar objetos --------------------------------
+###############################################################################
+# 8. Compilar objetos
+###############################################################################
 $(OBJ_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
@@ -57,8 +65,10 @@ $(OBJ_DIR)/%.o: %.cu
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) -c $< -o $@
 
+
 # ------------------------ 9. Enlazar ejecutables -----------------------------
 # CPU
+
 $(BIN_DIR)/time_smh: $(OBJ_DIR)/experiments/src/time_smh.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
@@ -71,7 +81,7 @@ $(BIN_DIR)/selection: $(OBJ_DIR)/src/selection.o
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
 
-# CUDA
+# CUDA target (host+device juntos)
 $(BIN_DIR)/selection_cuda: $(OBJ_DIR)/src/selection_main.o $(OBJ_DIR)/src/selection_cuda.o
 	@mkdir -p $(@D)
 	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
