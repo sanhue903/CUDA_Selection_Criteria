@@ -2,7 +2,7 @@
 
 LISTA="test_influeza_filelist.txt"
 THRESHOLD="0.9"
-REPS=100
+REPS=10
 THREADS_ARR=(1 8)
 MH_SIZE_ARR=(16 32 64 128 256 512 1024)
 
