@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Flatten data for GPU
+        // Flatten data for GPU
     int N = files.size();
     std::vector<uint64_t> sketches_flat(N * mh_size);
     std::vector<double> cards_sorted(N);
@@ -235,38 +235,54 @@ int main(int argc, char *argv[])
         cards_sorted[i] = card_name[i].second;
     }
 
-    // Allocate device arrays
+    // --- NEW: Build (i, k) pairs table for all unique pairs i < k
+    std::vector<uint2> pairs;
+    for (int i = 0; i < N - 1; ++i)
+        for (int k = i + 1; k < N; ++k)
+            pairs.push_back({(unsigned)i, (unsigned)k});
+    size_t total_pairs = pairs.size();
+
+    // --- Allocate device arrays
     uint64_t* d_sk = nullptr;
     double* d_cd = nullptr;
     int* d_out1 = nullptr;
     int* d_out2 = nullptr;
-    int total_pairs = N * (N - 1) / 2;
+    uint2* d_pairs = nullptr;
+
     cudaMalloc(&d_sk, sketches_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
     cudaMalloc(&d_out1, total_pairs * sizeof(int));
     cudaMalloc(&d_out2, total_pairs * sizeof(int));
+    cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
+
     cudaMemcpy(d_sk, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
     int block = 256;
+    // The number of pairs sets the number of threads/blocks
     int grid = (total_pairs + block - 1) / block;
 
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
         std::cout << list_file << ";smh_a;" << threshold << ";";
         TIMERSTART(criterio_smh_cuda)
-        launch_kernel_smh(d_sk, d_cd, N, mh_size, n_rows, n_bands, threshold, d_out1, block, grid);
+        launch_kernel_smh(d_sk, d_cd, d_pairs, mh_size,
+                          n_rows, n_bands,
+                          total_pairs, d_out1, block, 0); // 0 = default stream
         TIMERSTOP(criterio_smh_cuda)
         std::cout << ";r:" << n_rows << "_" << "b:" << n_bands << "\n";
 
         // ---- CB+SMH CUDA
         std::cout << list_file << ";CB+smh_a;" << threshold << ";";
         TIMERSTART(criterio_CBsmh_cuda)
-        launch_kernel_CBsmh(d_sk, d_cd, N, mh_size, n_rows, n_bands, threshold, d_out2, block, grid);
+        launch_kernel_CBsmh(d_sk, d_cd, d_pairs, mh_size,
+                            n_rows, n_bands, threshold,
+                            total_pairs, d_out2, block, 0);
         TIMERSTOP(criterio_CBsmh_cuda)
         std::cout << ";r:" << n_rows << "_" << "b:" << n_bands << "\n";
     }
 
-    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2);
+    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2); cudaFree(d_pairs);
     return 0;
 }
