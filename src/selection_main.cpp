@@ -137,36 +137,58 @@ int main(int argc, char *argv[]) {
         cards_sorted[i] = card_name[i].second;
     }
 
+    // --- Build pair table (i, k) for all i < k
+    std::vector<uint2> pairs;
+    for (int i = 0; i < N - 1; ++i)
+        for (int k = i + 1; k < N; ++k)
+            pairs.push_back({(unsigned)i, (unsigned)k});
+    size_t total_pairs = pairs.size();
+
     // --- Allocate/copy on GPU
     uint64_t* d_sketches;
     double* d_cards;
     int* d_out1;
     int* d_out2;
-    int total_pairs = N * (N - 1) / 2;
+    uint2* d_pairs;
 
     cudaMalloc(&d_sketches,  sketches_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cards,  cards_sorted.size() * sizeof(double));
     cudaMalloc(&d_out1, total_pairs * sizeof(int));
     cudaMalloc(&d_out2, total_pairs * sizeof(int));
+    cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
 
     cudaMemcpy(d_sketches, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cards, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
+    // -- Set CUDA block/grid
     int block = 256;
     int grid = (total_pairs + block - 1) / block;
 
-    // --- Launch CUDA kernels via wrappers!
-    launch_kernel_smh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out1, block, grid);
-    launch_kernel_CBsmh(d_sketches, d_cards, N, m, n_rows, n_bands, threshold, d_out2, block, grid);
+    // --- Use streams for async execution if desired (here, just default stream)
+    cudaStream_t stream = 0; // Replace with created stream for async
+
+    // --- Launch CUDA kernels via new wrappers!
+    launch_kernel_smh(
+        d_sketches, d_cards, d_pairs, m,
+        n_rows, n_bands,
+        total_pairs, d_out1, block, stream);
+
+    launch_kernel_CBsmh(
+        d_sketches, d_cards, d_pairs, m,
+        n_rows, n_bands, threshold,
+        total_pairs, d_out2, block, stream);
 
     // --- Copy results back
     std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
     cudaMemcpy(smh_result.data(), d_out1, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(cbsmh_result.data(), d_out2, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
 
-    cudaFree(d_sketches); cudaFree(d_cards); cudaFree(d_out1); cudaFree(d_out2);
+    // --- Free device memory
+    cudaFree(d_sketches); cudaFree(d_cards);
+    cudaFree(d_out1); cudaFree(d_out2); cudaFree(d_pairs);
 
-    // --- Output results with final Jaccard computation (CPU)
+    // --- Output results (unchanged)
     for (int idx = 0, i = 0; i < N - 1; ++i) {
         std::string fn1 = card_name[i].first;
         double e1 = card_name[i].second;
