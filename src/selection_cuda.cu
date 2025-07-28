@@ -10,7 +10,7 @@ __global__ void kernel_smh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,  
+    const int2* pairs,  
 
     int total_pairs,
     double tau,
@@ -18,20 +18,20 @@ __global__ void kernel_smh(
     int m_hll, int m_aux,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    int2* out,
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
 
-    uint2 p = pairs[idx];
+    int2 p = pairs[idx];
     int i = p.x;
     int k = p.y;
 
-    const uint64_t* v1 = sketches + i * m;
-    const uint64_t* v2 = sketches + k * m;
+    const uint64_t* v1 = aux_sketches + i * m;
+    const uint64_t* v2 = aux_sketches + k * m;
 
     if (!smh_a(v1, v2, n_rows, n_bands));
-        out[idx] = {-1, -1};
+        out[idx] = make_int2(-1, -1);
         return;
 
     double c1 = cards[i];
@@ -43,10 +43,10 @@ __global__ void kernel_smh(
     double union_card = hll_union_card(main1, main2, m_hll); 
     double jacc14 = (c1 + c2 - union_card) / union_card;
     if (jacc14 < tau)
-        out[idx] = {-1, -1};
+        out[idx] = make_int2(-1, -1);
         return;
     
-    out[idx] = {i, k};
+    out[idx] = make_int2( i, k);
 }
 
 // kernel 2: CB + smh_a, now uses precomputed pairs
@@ -55,7 +55,7 @@ __global__ void kernel_CBsmh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,   
+    const int2* pairs,   
 
     int total_pairs,
     double tau,
@@ -63,12 +63,12 @@ __global__ void kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    int2* out,
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
 
-    uint2 p = pairs[idx];
+    int2 p = pairs[idx];
     int i = p.x;
     int k = p.y;
 
@@ -76,14 +76,14 @@ __global__ void kernel_CBsmh(
     double c2 = cards[k];
 
     if (!CB(tau, c1, c2))
-        out[idx] = {-1, -1};
+        out[idx] = make_int2(-1, -1);
         return;
     
     const uint64_t* aux1 = aux_sketches + i * m_aux;
     const uint64_t* aux2 = aux_sketches + k * m_aux;
    
     if (!smh_a (aux1, aux2, n_rows, n_bands))
-        out[idx] = {-1, -1};
+        out[idx] = make_int2(-1, -1);
         return;
 
     const uint8_t* main1 = main_sketches + i * m_hll;
@@ -92,10 +92,10 @@ __global__ void kernel_CBsmh(
     double union_card = hll_union_card(main1, main2, m_hll); 
     double jacc14 = (c1 + c2 - union_card) / union_card;
     if (jacc14 < tau)
-        out[idx] = {-1, -1};
+        out[idx] = make_int2(-1, -1);
         return;
     
-    out[idx] = {i, k};
+    out[idx] = make_int2(i, k);
 }
 
 void upload_pow2neg(cudaStream_t stream = 0){
@@ -117,7 +117,7 @@ void launch_kernel_smh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,   
+    const int2* pairs,   
 
     int total_pairs,
     double tau,
@@ -125,7 +125,7 @@ void launch_kernel_smh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    int2* out,
     int blockSize,
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
@@ -146,7 +146,7 @@ void launch_kernel_CBsmh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,   
+    const int2* pairs,   
 
     int total_pairs,
     double tau,
@@ -154,7 +154,7 @@ void launch_kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    int2* out,
     int blockSize,
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
