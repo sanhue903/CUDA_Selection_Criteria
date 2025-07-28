@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < N; ++i) {
         const std::string& fname = card_name[i].first;
         std::memcpy(aux_smh_flat.data() + i * m, name2aux[fname].data(), aux_bytes);
-        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->registers(), m_hll);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->data(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
     int block = 256;
-    launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+    launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                     mh_size, m_hll, n_rows, 
                     n_bands, d_out, block);
 
