@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cuda_runtime.h>
 
-void upload_pow2neg();
+void upload_pow2neg(cudaStream_t stream = 0);
 
 void launch_kernel_smh(
     const uint8_t* main_sketches,
