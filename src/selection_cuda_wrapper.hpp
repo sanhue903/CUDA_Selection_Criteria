@@ -9,7 +9,7 @@ void launch_kernel_smh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,   
+    const int2* pairs,   
 
     int total_pairs,
     double tau,
