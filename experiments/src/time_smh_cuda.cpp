@@ -236,16 +236,16 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < N; ++i) {
         const std::string& fname = card_name[i].first;
-        std::memcpy(aux_smh_flat.data() + i * m, name2mhv[fname].data(), m_aux);
-        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->data(), m_hll);
+        std::memcpy(aux_smh_flat.data() + i * m_aux, name2mhv[fname].data(), m_aux);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll[fname]->data(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
    
-    std::vector<uint2> pairs;
+    std::vector<int2> pairs;
     for (int i = 0; i < N - 1; ++i)
         for (int k = i + 1; k < N; ++k)
-            pairs.push_back({(unsigned)i, (unsigned)k});
+            pairs.push_back({   i, k});
     size_t total_pairs = pairs.size();
 
     // --- Allocate device arrays
@@ -270,14 +270,14 @@ int main(int argc, char *argv[])
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
         TIMERSTART(criterio_smh_cuda)
-        launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+        launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, block);
         TIMERSTOP(criterio_smh_cuda)
 
         // ---- CB+SMH CUDA
         TIMERSTART(criterio_CBsmh_cuda)
-        launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+        launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,   
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, block);
         TIMERSTOP(criterio_CBsmh_cuda)
