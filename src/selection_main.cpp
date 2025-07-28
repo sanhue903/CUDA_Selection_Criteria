@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     }
 
    
-    std::vector<uint2> pairs;
+    std::vector<int2> pairs;
     for (int i = 0; i < N - 1; ++i)
         for (int k = i + 1; k < N; ++k)
             pairs.push_back({i, k});
@@ -164,11 +164,11 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(int2), cudaMemcpyHostToDevice);
 
     int block = 256;
     launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
-                    mh_size, m_hll, n_rows, 
+                    aux_bytes, m_hll, n_rows, 
                     n_bands, d_out, block);
 
     std::vector<uint2> result(total_pairs);

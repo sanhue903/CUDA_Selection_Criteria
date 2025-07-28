@@ -237,7 +237,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < N; ++i) {
         const std::string& fname = card_name[i].first;
         std::memcpy(aux_smh_flat.data() + i * m, name2mhv[fname].data(), m_aux);
-        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->registers(), m_hll);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->data(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
@@ -252,14 +252,14 @@ int main(int argc, char *argv[])
     uint8_t* d_main = nullptr;
     uint64_t* d_aux = nullptr;
     double* d_cd = nullptr;
-    uint2* d_out = nullptr;
-    uint2* d_pairs = nullptr;
+    int2* d_out = nullptr;
+    int2* d_pairs = nullptr;
 
     cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
     cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out, total_pairs * sizeof(uint2));
-    cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
+    cudaMalloc(&d_out, total_pairs * sizeof(int2));
+    cudaMalloc(&d_pairs, total_pairs * sizeof(int2));
 
     cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
