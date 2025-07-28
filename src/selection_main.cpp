@@ -152,8 +152,8 @@ int main(int argc, char *argv[]) {
     uint8_t* d_main = nullptr;
     uint64_t* d_aux = nullptr;
     double* d_cd = nullptr;
-    uint2* d_out = nullptr;
-    uint2* d_pairs = nullptr;
+    int2* d_out = nullptr;
+    int2* d_pairs = nullptr;
 
     cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
     cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
