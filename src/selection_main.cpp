@@ -128,16 +128,15 @@ int main(int argc, char *argv[]) {
 
      // Flatten data for GPU
     const size_t m_hll = 1 << 14;
-    const size_t m_aux = mh_size*8;
+    const size_t buckets_aux = aux_bytes/8;
 
-    int N = files.size();
     std::vector<uint8_t> hll_flat(N * m_hll);
-    std::vector<uint64_t> aux_smh_flat(N * mh_size);
+    std::vector<uint64_t> aux_smh_flat(N * buckets_aux);
     std::vector<double> cards_sorted(N);
 
     for (int i = 0; i < N; ++i) {
         const std::string& fname = card_name[i].first;
-        std::memcpy(aux_smh_flat.data() + i * m, name2mhv[fname].data(), m_aux);
+        std::memcpy(aux_smh_flat.data() + i * m, name2aux[fname].data(), aux_bytes);
         std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->registers(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
@@ -146,7 +145,7 @@ int main(int argc, char *argv[]) {
     std::vector<uint2> pairs;
     for (int i = 0; i < N - 1; ++i)
         for (int k = i + 1; k < N; ++k)
-            pairs.push_back({(unsigned)i, (unsigned)k});
+            pairs.push_back({i, k});
     size_t total_pairs = pairs.size();
 
     // --- Allocate device arrays
@@ -168,11 +167,9 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
     int block = 256;
-    for (int rep = 0; rep < total_rep; ++rep) {
-        launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
-                        mh_size, m_hll, n_rows, 
-                        n_bands, d_out, block);
-    }
+    launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+                    mh_size, m_hll, n_rows, 
+                    n_bands, d_out, block);
 
     std::vector<uint2> result(total_pairs);
     cudaMemcpy(result.data(), d_out, total_pairs * sizeof(uint2), cudaMemcpyDeviceToHost);
