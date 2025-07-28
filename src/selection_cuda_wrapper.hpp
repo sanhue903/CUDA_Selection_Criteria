@@ -34,6 +34,6 @@ void launch_kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    const int2* out,
     int blockSize
     );
