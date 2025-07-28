@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include <cstdint>
 #include <cstdio>
+#include <cmath>
 #include "include/criteria_sketch_cuda.cuh"
 
 
@@ -18,7 +19,7 @@ __global__ void kernel_smh(
     int m_hll, int m_aux,
     int n_rows, int n_bands,
 
-    int2* out,
+    int2* out
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
@@ -27,8 +28,8 @@ __global__ void kernel_smh(
     int i = p.x;
     int k = p.y;
 
-    const uint64_t* v1 = aux_sketches + i * m;
-    const uint64_t* v2 = aux_sketches + k * m;
+    const uint64_t* v1 = aux_sketches + i * m_aux;
+    const uint64_t* v2 = aux_sketches + k * m_aux;
 
     if (!smh_a(v1, v2, n_rows, n_bands));
         out[idx] = make_int2(-1, -1);
@@ -63,7 +64,7 @@ __global__ void kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    int2* out,
+    int2* out
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
@@ -101,7 +102,7 @@ __global__ void kernel_CBsmh(
 void upload_pow2neg(cudaStream_t stream = 0){
     float h_pow2neg[64];
     for (int k = 0; k < 64; ++k)
-        h_pow2neg[k] = std::ldexpf(1.0f, -k);
+        h_pow2neg[k] = ldexpf(1.0f, -k);
     
     cudaMemcpyToSymbolAsync(d_pow2neg,
                             h_pow2neg,
@@ -126,7 +127,7 @@ void launch_kernel_smh(
     int n_rows, int n_bands,
 
     int2* out,
-    int blockSize,
+    int blockSize
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
     kernel_smh<<<gridSize, blockSize>>>(
@@ -155,7 +156,7 @@ void launch_kernel_CBsmh(
     int n_rows, int n_bands,
 
     int2* out,
-    int blockSize,
+    int blockSize
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
     kernel_CBsmh<<<gridSize, blockSize>>>(
@@ -168,4 +169,3 @@ void launch_kernel_CBsmh(
     }
     #endif
 }
-33d
