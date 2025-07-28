@@ -204,6 +204,7 @@ int main(int argc, char *argv[])
     }
 
     TIMERSTOP(construccion)
+    upload_pow2neg();
     std::cout << ";m:" << mh_size << "\n";
 
     // Sort by cardinality
@@ -224,18 +225,23 @@ int main(int argc, char *argv[])
         }
     }
 
-        // Flatten data for GPU
+    // Flatten data for GPU
+    const size_t m_hll = 1 << 14;
+    const size_t m_aux = mh_size*8;
+
     int N = files.size();
-    std::vector<uint64_t> sketches_flat(N * mh_size);
+    std::vector<uint8_t> hll_flat(N * m_hll);
+    std::vector<uint64_t> aux_smh_flat(N * mh_size);
     std::vector<double> cards_sorted(N);
 
     for (int i = 0; i < N; ++i) {
         const std::string& fname = card_name[i].first;
-        std::copy(name2mhv[fname].begin(), name2mhv[fname].end(), sketches_flat.begin() + i * mh_size);
+        std::memcpy(aux_smh_flat.data() + i * m, name2mhv[fname].data(), m_aux);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->registers(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
-    // --- NEW: Build (i, k) pairs table for all unique pairs i < k
+   
     std::vector<uint2> pairs;
     for (int i = 0; i < N - 1; ++i)
         for (int k = i + 1; k < N; ++k)
@@ -243,46 +249,40 @@ int main(int argc, char *argv[])
     size_t total_pairs = pairs.size();
 
     // --- Allocate device arrays
-    uint64_t* d_sk = nullptr;
+    uint8_t* d_main = nullptr;
+    uint64_t* d_aux = nullptr;
     double* d_cd = nullptr;
-    int* d_out1 = nullptr;
-    int* d_out2 = nullptr;
+    uint2* d_out = nullptr;
     uint2* d_pairs = nullptr;
 
-    cudaMalloc(&d_sk, sketches_flat.size() * sizeof(uint64_t));
+    cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
+    cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out1, total_pairs * sizeof(int));
-    cudaMalloc(&d_out2, total_pairs * sizeof(int));
+    cudaMalloc(&d_out, total_pairs * sizeof(uint2));
     cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
 
-    cudaMemcpy(d_sk, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
     int block = 256;
-    // The number of pairs sets the number of threads/blocks
-    int grid = (total_pairs + block - 1) / block;
-
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
-        std::cout << list_file << ";smh_a;" << threshold << ";";
         TIMERSTART(criterio_smh_cuda)
-        launch_kernel_smh(d_sk, d_cd, d_pairs, mh_size,
-                          n_rows, n_bands,
-                          total_pairs, d_out1, block, 0); // 0 = default stream
+        launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+                        mh_size, m_hll, n_rows, 
+                        n_bands, d_out, block);
         TIMERSTOP(criterio_smh_cuda)
-        std::cout << ";r:" << n_rows << "_" << "b:" << n_bands << "\n";
 
         // ---- CB+SMH CUDA
-        std::cout << list_file << ";CB+smh_a;" << threshold << ";";
         TIMERSTART(criterio_CBsmh_cuda)
-        launch_kernel_CBsmh(d_sk, d_cd, d_pairs, mh_size,
-                            n_rows, n_bands, threshold,
-                            total_pairs, d_out2, block, 0);
+        launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+                        mh_size, m_hll, n_rows, 
+                        n_bands, d_out, block);
         TIMERSTOP(criterio_CBsmh_cuda)
-        std::cout << ";r:" << n_rows << "_" << "b:" << n_bands << "\n";
     }
 
-    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2); cudaFree(d_pairs);
+    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs);
     return 0;
 }

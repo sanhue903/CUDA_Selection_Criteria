@@ -27,10 +27,20 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
     return false;
 }
 
-__device__ bool CB_smh_a(double tau, double card_A, double card_B,
-                         const uint64_t* v1, const uint64_t* v2, uint n_rows, uint n_bands) {
-    return CB(tau, card_A, card_B) || smh_a(v1, v2, n_rows, n_bands);
+extern __constant__ float d_pow2neg[64];
+
+double hhl_union_card(const uint8_t* a, const uint8_t* b, int m)
+{
+    double Z = 0.f;
+    for (int j = 0; j < m; ++j) {
+        uint8_t r = max(a[j], b[j]);
+        Z += d_pow2neg[r];
+    }
+
+    const double alpha = 0.7213f / (1.f + 1.079f / m);
+    return alpha * m * m / Z;
 }
+
 #endif
 
 #endif

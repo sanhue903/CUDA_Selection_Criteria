@@ -15,7 +15,6 @@
 #include "include/criteria_sketch_cuda.cuh"
 #include "selection_cuda_wrapper.hpp"
 
-
 // Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
     gzFile fp(gzopen(path.data(), "rb"));
@@ -127,82 +126,64 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Flatten sketches and cards to arrays
-    std::vector<uint64_t> sketches_flat(N * m);
+     // Flatten data for GPU
+    const size_t m_hll = 1 << 14;
+    const size_t m_aux = mh_size*8;
+
+    int N = files.size();
+    std::vector<uint8_t> hll_flat(N * m_hll);
+    std::vector<uint64_t> aux_smh_flat(N * mh_size);
     std::vector<double> cards_sorted(N);
+
     for (int i = 0; i < N; ++i) {
-        std::copy(name2aux[card_name[i].first].begin(),
-                  name2aux[card_name[i].first].end(),
-                  sketches_flat.begin() + i * m);
+        const std::string& fname = card_name[i].first;
+        std::memcpy(aux_smh_flat.data() + i * m, name2mhv[fname].data(), m_aux);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->registers(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
-    // --- Build pair table (i, k) for all i < k
+   
     std::vector<uint2> pairs;
     for (int i = 0; i < N - 1; ++i)
         for (int k = i + 1; k < N; ++k)
             pairs.push_back({(unsigned)i, (unsigned)k});
     size_t total_pairs = pairs.size();
 
-    // --- Allocate/copy on GPU
-    uint64_t* d_sketches;
-    double* d_cards;
-    int* d_out1;
-    int* d_out2;
-    uint2* d_pairs;
+    // --- Allocate device arrays
+    uint8_t* d_main = nullptr;
+    uint64_t* d_aux = nullptr;
+    double* d_cd = nullptr;
+    uint2* d_out = nullptr;
+    uint2* d_pairs = nullptr;
 
-    cudaMalloc(&d_sketches,  sketches_flat.size() * sizeof(uint64_t));
-    cudaMalloc(&d_cards,  cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out1, total_pairs * sizeof(int));
-    cudaMalloc(&d_out2, total_pairs * sizeof(int));
+    cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
+    cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
+    cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
+    cudaMalloc(&d_out, total_pairs * sizeof(uint2));
     cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
 
-    cudaMemcpy(d_sketches, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_cards, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
-    // -- Set CUDA block/grid
     int block = 256;
-    int grid = (total_pairs + block - 1) / block;
+    for (int rep = 0; rep < total_rep; ++rep) {
+        launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold
+                        mh_size, m_hll, n_rows, 
+                        n_bands, d_out, block);
+    }
 
-    // --- Use streams for async execution if desired (here, just default stream)
-    cudaStream_t stream = 0; // Replace with created stream for async
+    std::vector<uint2> result(total_pairs);
+    cudaMemcpy(result.data(), d_out, total_pairs * sizeof(uint2), cudaMemcpyDeviceToHost);
 
-    // --- Launch CUDA kernels via new wrappers!
-    launch_kernel_smh(
-        d_sketches, d_cards, d_pairs, m,
-        n_rows, n_bands,
-        total_pairs, d_out1, block, stream);
-
-    launch_kernel_CBsmh(
-        d_sketches, d_cards, d_pairs, m,
-        n_rows, n_bands, threshold,
-        total_pairs, d_out2, block, stream);
-
-    // --- Copy results back
-    std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
-    cudaMemcpy(smh_result.data(), d_out1, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(cbsmh_result.data(), d_out2, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
-
-    // --- Free device memory
-    cudaFree(d_sketches); cudaFree(d_cards);
-    cudaFree(d_out1); cudaFree(d_out2); cudaFree(d_pairs);
-
-    // --- Output results (unchanged)
-    for (int idx = 0, i = 0; i < N - 1; ++i) {
-        std::string fn1 = card_name[i].first;
-        double e1 = card_name[i].second;
-        for (int k = i + 1; k < N; ++k, ++idx) {
-            std::string fn2 = card_name[k].first;
-            double e2 = card_name[k].second;
-            if (cbsmh_result[idx] == 1) {
-                double t = name2hll14[fn1]->union_size(*name2hll14[fn2]);
-                double jacc14 = (e1 + e2 - t) / t;
-                if (jacc14 >= threshold) {
-                    std::cout << fn1 << " " << fn2 << " " << jacc14 << "\n";
-                }
-            }
-        }
+    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs);
+    
+    for (auto &pair : result){
+        if (pair.x == -1)
+            continue;
+        
+        std::cout << card_name[pair.x].first << " " << card_name[pair.y].first << "\n";
     }
 
     return 0;
