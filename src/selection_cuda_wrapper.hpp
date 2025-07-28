@@ -17,7 +17,7 @@ void launch_kernel_smh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    const uint2* out,
+    const int2* out,
     int blockSize
     );
 
@@ -26,7 +26,7 @@ void launch_kernel_CBsmh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const uint2* pairs,   
+    const int2* pairs,   
 
     int total_pairs,
     double tau,
