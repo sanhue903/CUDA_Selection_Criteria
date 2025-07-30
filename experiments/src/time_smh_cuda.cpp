@@ -269,18 +269,22 @@ int main(int argc, char *argv[])
     int block = 256;
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
+        std::cout << list_file << ";smh_a;" << threshold << ";";
         TIMERSTART(criterio_smh_cuda)
         launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, block);
         TIMERSTOP(criterio_smh_cuda)
+        std::cout << ";m:" << mh_size << std::endl;
 
         // ---- CB+SMH CUDA
+        std::cout << list_file << ";CB+smh_a;" << threshold << ";";
         TIMERSTART(criterio_CBsmh_cuda)
         launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,   
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, block);
         TIMERSTOP(criterio_CBsmh_cuda)
+        std::cout << ";m:" << mh_size << std::endl;
     }
 
     cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs);
