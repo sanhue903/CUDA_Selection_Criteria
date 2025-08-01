@@ -10,12 +10,12 @@ SRC_DIRS := experiments/src src
 
 # ------------------------ Compiladores y flags ----------------------------
 CXX       := c++
-CXXFLAGS  := -Wall -Wextra -std=c++14 -fopenmp -O3 -march=native \
+CXXFLAGS  := -Wall -Wextra -std=c++14 -fopenmp -O3 -march=native -w \
 			 -DSEQAN_HAS_ZLIB=1 -DNDEBUG
 LDFLAGS   := -lstdc++ -lm -lz -pthread
 
 NVCC      := nvcc
-CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
+CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native -w" \
 			 -arch=sm_86 -DNDEBUG -lineinfo
 LDFLAGS_CUDA := -lcudart -lm -lz
 

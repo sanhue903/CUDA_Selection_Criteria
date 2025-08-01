@@ -1,10 +1,12 @@
 #!/bin/bash
 
 LISTA="test_influeza_filelist.txt"
+#LISTA="test.txt"
 THRESHOLD="0.9"
-REPS=10
+REPS=1
 THREADS_ARR=(1 8)
-MH_SIZE_ARR=(16 32 64 128 256 512 1024)
+#MH_SIZE_ARR=(16 32 64 128 256 512 1024)
+MH_SIZE_ARR=(512)
 
 CPU_BINARY="./build/time_smh"
 GPU_BINARY="./build/time_smh_cuda"
