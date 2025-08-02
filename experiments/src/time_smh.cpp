@@ -196,7 +196,6 @@ int main(int argc, char *argv[])
 		card_name.at (i_processed) = std::make_pair (filename, c);
 	}
 
-	TIMERSTOP(construccion)
 	std::cout << ";m:" << mh_size << "\n";
 
 	// Ordenamos los pares de card_name según la estimación (hll's de tamaño p=14).
@@ -208,6 +207,7 @@ int main(int argc, char *argv[])
 			});
 
 
+	TIMERSTOP(construccion)
 
 	int n_rows = 1, n_bands = 1;
 	for (int band=1; band <=mh_size; band++){

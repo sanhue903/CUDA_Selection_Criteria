@@ -29,7 +29,7 @@ done
 # ----------- GPU (CUDA) -----------
 for M in "${MH_SIZE_ARR[@]}"; do
     for REP in $(seq 1 $REPS); do
-        OUTPUT=$($GPU_BINARY -l $LISTA -h $THRESHOLD -m $M)
+        OUTPUT=$($GPU_BINARY -l $LISTA -h $THRESHOLD -m $M -b 256)
         echo "$OUTPUT" | grep ';build_smh;'   | awk -F';' -v m=$M -v r=$REP '{print "gpu,"t","m","r",build_smh,"$4}'   >> $LOG
         echo "$OUTPUT" | grep ';smh_a;'       | awk -F';' -v m=$M -v r=$REP '{print "gpu,"t","m","r",smh_a,"$4}'       >> $LOG
         echo "$OUTPUT" | grep ';CB+smh_a;'    | awk -F';' -v m=$M -v r=$REP '{print "gpu,"t","m","r",CB+smh_a,"$4}'    >> $LOG

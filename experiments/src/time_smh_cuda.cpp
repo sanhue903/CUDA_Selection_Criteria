@@ -16,6 +16,8 @@
 #include "src/selection_cuda_wrapper.hpp"  // This is your wrapper!
 
 
+
+
 uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 {
     uint64_t reverse = 0;
@@ -145,10 +147,10 @@ int main(int argc, char *argv[])
     const uint sketch_bits = 14;
     float threshold = 0.9;
     int mh_size = 8;
-    int total_rep = 1;
+    int block_size = 256;
 
     char c;
-    while ((c = getopt(argc, argv, "xl:h:m:R:")) != -1) {
+    while ((c = getopt(argc, argv, "xl:h:m:b:")) != -1) {
         switch (c) {
             case 'x':
                 std::cout << "Usage: -l -t -h -m\n";
@@ -162,8 +164,8 @@ int main(int argc, char *argv[])
             case 'm':
                 mh_size = std::stoi(optarg);
                 break;
-            case 'R':
-                total_rep = std::stoi(optarg);
+            case 'b':
+                block_size = std::stoi(optarg);
                 break;
             default:
                 break;
@@ -203,8 +205,6 @@ int main(int argc, char *argv[])
         card_name.at (i_processed) = std::make_pair (filename, c);
     }
 
-    TIMERSTOP(construccion)
-    upload_pow2neg();
     std::cout << ";m:" << mh_size << "\n";
 
     // Sort by cardinality
@@ -212,9 +212,13 @@ int main(int argc, char *argv[])
         [](const std::pair<std::string, double> &x, const std::pair<std::string, double> &y) {
             return x.second < y.second;
         });
+    
+    
 
-    // Calculate bands/rows
+    upload_pow2neg();
+    TIMERSTOP(construccion)
     int n_rows = 1, n_bands = 1;
+
     for (int band = 1; band <= mh_size; band++) {
         if (mh_size % band != 0) continue;
         float P_r = 1.0 - pow(1.0 - pow(threshold, (float)mh_size / band), (float)band);
@@ -266,14 +270,13 @@ int main(int argc, char *argv[])
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
 
-    int block = 256;
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
         std::cout << list_file << ";smh_a;" << threshold << ";";
         TIMERSTART(criterio_smh_cuda)
         launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                         mh_size, m_hll, n_rows, 
-                        n_bands, d_out, block);
+                        n_bands, d_out, block_size);
         TIMERSTOP(criterio_smh_cuda)
         std::cout << ";m:" << mh_size << std::endl;
 
@@ -282,7 +285,7 @@ int main(int argc, char *argv[])
         TIMERSTART(criterio_CBsmh_cuda)
         launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,   
                         mh_size, m_hll, n_rows, 
-                        n_bands, d_out, block);
+                        n_bands, d_out, block_size);
         TIMERSTOP(criterio_CBsmh_cuda)
         std::cout << ";m:" << mh_size << std::endl;
     }

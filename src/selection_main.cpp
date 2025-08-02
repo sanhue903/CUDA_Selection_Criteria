@@ -62,9 +62,10 @@ int main(int argc, char *argv[]) {
     float threshold = 0.9;
     int aux_bytes = 256;  // will use as m = aux_bytes/8
     std::string criterion = "smh_a";
+    int block_size = 256;
 
     char c;
-    while ((c = getopt(argc, argv, "xl:t:a:h:c:")) != -1) {
+    while ((c = getopt(argc, argv, "xl:b:a:h:c:")) != -1) {
         switch (c) {
             case 'x':
                 std::cout << "Usage: -l -t -a -h -c\n";
@@ -72,14 +73,14 @@ int main(int argc, char *argv[]) {
             case 'l':
                 list_file = std::string(optarg);
                 break;
+            case 'b':
+                block_size = std::stoi(optarg);
+                break;
             case 'a':
                 aux_bytes = std::stoi(optarg);
                 break;
             case 'h':
                 threshold = std::stof(optarg);
-                break;
-            case 'c':
-                criterion = std::string(optarg);
                 break;
             default:
                 break;
@@ -166,10 +167,9 @@ int main(int argc, char *argv[]) {
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(int2), cudaMemcpyHostToDevice);
 
-    int block = 256;
     launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                     aux_bytes, m_hll, n_rows, 
-                    n_bands, d_out, block);
+                    n_bands, d_out, block_size);
 
     std::vector<uint2> result(total_pairs);
     cudaMemcpy(result.data(), d_out, total_pairs * sizeof(uint2), cudaMemcpyDeviceToHost);

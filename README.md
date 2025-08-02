@@ -42,7 +42,7 @@ git clone --depth 1 --branch v0.19.0 https://github.com/dnbaker/sketch
 
 ## Use
 
-The implementation of the selection criteria is in the `src` folder, we also provide implementation for experiments to evaluate the selection criteria which are in the `experiments/src` folder. To compile the .cpp files use the Makefile provided, simply run `make`. The file `build_sketch.cpp` contains the sketch construction step. This program is used as follows:
+To compile the .cpp files use the Makefile provided, simply run `make`. The file `build_sketch.cpp` contains the sketch construction step. This program is used as follows:
 ```
 ./build/build_sketch -l filelist -t nthreads -a aux_memory -c criterion
 ```
@@ -54,31 +54,35 @@ Where
 
 Once the command is run, the primary hll sketches and auxiliary structures will be saved along the genomic .fna.gz files.
 
+The `selection` file has the selection algorithm with CUDA, this version only uses the `smh_a` criterion. This program is used as follows:
+
+```
+./build/selection -l filelist -h tau -a aux_memory -b block_size
+```
 Where
 - `-l` option recieves a txt file containing the path to the .fna.gz files that will be processed. One line for every path.
-- `-t` option recieves the number of threads to run the program.
 - `-h` option recieves the similarity threshold `tau`.
 - `-a` option recieves the additional memory, in bytes, that the criterion will use for each sequence.
-- `-c` option recieves the criterion to use. The aviable options are `hll_a`, `hll_an` and `smh_a`.
+- `-b` option recieves the CUDA block size.
 
-The `selection_main` file has the selection algorithm with CUDA. This program is used as follows:
 
-```
-./build/selection_main -l filelist -h tau -a aux_memory 
-```
 
 ## Experiments
 
-We provide implementation of experiments to evaluate time of comparisions. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program. These implementation are in the `experiments/src` folder. 
+We provide implementation of experiments to evaluate time of comparisions. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program.
+
+To compare the algorithm with OpenMP and CUDA, simply run the bash script `run_experiment.sh`; it will generate a CSV file with the execution times.
+
+ These implementation are in the `experiments/src` folder. 
 
 ```
-./build/time_smh_cuda -l filelist -h tau -m buckets_smh -R reps
+./build/time_smh_cuda -l filelist -h tau -m buckets_smh -b block_size
 ```
 Where
 - `-l` option recieves a txt file containing the path to the .fna.gz files that will be processed. One line for every path.
 - `-t` option recieves the number of threads to run the program.
 - `-h` option recieves the similarity threshold `tau`.
 - `-m` option recieves number of buckets of the auxiliar SuperMinHash sketch m.
-- `-R` option recieves number of reps of the experiment.
+- `-b` option recieves the CUDA block size.
 
 The output is the time it takes to retrieve the similar pairs using the `CB+smh_a` criterion, we also include the results of the `CB` criterion and with no criterion (baseline case).
