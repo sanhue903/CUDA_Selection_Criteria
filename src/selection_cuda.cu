@@ -4,6 +4,11 @@
 #include <cmath>
 #include "include/criteria_sketch_cuda.cuh"
 
+struct Result {
+    int x, y;
+    float sim;
+};
+
 
 
 __global__ void kernel_smh(
@@ -11,7 +16,7 @@ __global__ void kernel_smh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const int2* pairs,  
+    const int2* pairs,
 
     int total_pairs,
     double tau,
@@ -19,7 +24,8 @@ __global__ void kernel_smh(
     int m_hll, int m_aux,
     int n_rows, int n_bands,
 
-    int2* out
+    Result* out,
+    int* out_count
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
@@ -31,23 +37,22 @@ __global__ void kernel_smh(
     const uint64_t* v1 = aux_sketches + i * m_aux;
     const uint64_t* v2 = aux_sketches + k * m_aux;
 
-    if (!smh_a(v1, v2, n_rows, n_bands));
-        out[idx] = make_int2(-1, -1);
+    if (!smh_a(v1, v2, n_rows, n_bands))
         return;
 
     double c1 = cards[i];
     double c2 = cards[k];
-    
+
     const uint8_t* main1 = main_sketches + i * m_hll;
     const uint8_t* main2 = main_sketches + k * m_hll;
-    
-    double union_card = hll_union_card(main1, main2, m_hll); 
+
+    double union_card = hll_union_card(main1, main2, m_hll);
     double jacc14 = (c1 + c2 - union_card) / union_card;
     if (jacc14 < tau)
-        out[idx] = make_int2(-1, -1);
         return;
-    
-    out[idx] = make_int2( i, k);
+
+    int out_idx = atomicAdd(out_count, 1);
+    out[out_idx] = {i, k, (float)jacc14};
 }
 
 // kernel 2: CB + smh_a, now uses precomputed pairs
@@ -63,8 +68,8 @@ __global__ void kernel_CBsmh(
 
     int m_aux, int m_hll,
     int n_rows, int n_bands,
-
-    int2* out
+    Result* out,
+    int* out_count
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= total_pairs) return;
@@ -77,14 +82,12 @@ __global__ void kernel_CBsmh(
     double c2 = cards[k];
 
     if (!CB(tau, c1, c2))
-        out[idx] = make_int2(-1, -1);
         return;
     
     const uint64_t* aux1 = aux_sketches + i * m_aux;
     const uint64_t* aux2 = aux_sketches + k * m_aux;
    
     if (!smh_a (aux1, aux2, n_rows, n_bands))
-        out[idx] = make_int2(-1, -1);
         return;
 
     const uint8_t* main1 = main_sketches + i * m_hll;
@@ -93,10 +96,11 @@ __global__ void kernel_CBsmh(
     double union_card = hll_union_card(main1, main2, m_hll); 
     double jacc14 = (c1 + c2 - union_card) / union_card;
     if (jacc14 < tau)
-        out[idx] = make_int2(-1, -1);
         return;
     
-    out[idx] = make_int2(i, k);
+    // Only write valid candidates
+    int out_idx = atomicAdd(out_count, 1);
+    out[out_idx] = {i, k, (float)jacc14};
 }
 
 void upload_pow2neg(cudaStream_t stream = 0){
@@ -118,7 +122,7 @@ void launch_kernel_smh(
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const int2* pairs,   
+    const int2* pairs,
 
     int total_pairs,
     double tau,
@@ -126,12 +130,14 @@ void launch_kernel_smh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    int2* out,
+    Result* out,
+    int* out_count,
     int blockSize
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
+    cudaMemset(out_count, 0, sizeof(int));
     kernel_smh<<<gridSize, blockSize>>>(
-        main_sketches, aux_sketches, cards, pairs, total_pairs, tau, m_aux, m_hll, n_rows, n_bands, out
+        main_sketches, aux_sketches, cards, pairs, total_pairs, tau, m_hll, m_aux, n_rows, n_bands, out, out_count
     );
     // Optionally: check for errors without sync
     #ifndef NDEBUG
@@ -155,12 +161,15 @@ void launch_kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    int2* out,
+    Result* out,
+    int* out_count,
     int blockSize
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
+    // Reset output counter
+    cudaMemset(out_count, 0, sizeof(int));
     kernel_CBsmh<<<gridSize, blockSize>>>(
-        main_sketches, aux_sketches, cards, pairs, total_pairs, tau, m_aux, m_hll, n_rows, n_bands, out
+        main_sketches, aux_sketches, cards, pairs, total_pairs, tau, m_aux, m_hll, n_rows, n_bands, out, out_count
     );
     #ifndef NDEBUG
     cudaError_t err = cudaPeekAtLastError();

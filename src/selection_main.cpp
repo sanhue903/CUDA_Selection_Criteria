@@ -153,14 +153,16 @@ int main(int argc, char *argv[]) {
     uint8_t* d_main = nullptr;
     uint64_t* d_aux = nullptr;
     double* d_cd = nullptr;
-    int2* d_out = nullptr;
     int2* d_pairs = nullptr;
+    Result* d_out = nullptr;
+    int* d_out_count = nullptr;
 
     cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
     cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out, total_pairs * sizeof(uint2));
-    cudaMalloc(&d_pairs, total_pairs * sizeof(uint2));
+    cudaMalloc(&d_pairs, total_pairs * sizeof(int2));
+    cudaMalloc(&d_out, total_pairs * sizeof(Result));
+    cudaMalloc(&d_out_count, sizeof(int));
 
     cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
@@ -169,18 +171,18 @@ int main(int argc, char *argv[]) {
 
     launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                     aux_bytes, m_hll, n_rows, 
-                    n_bands, d_out, block_size);
+                    n_bands, d_out, d_out_count, block_size);
 
-    std::vector<uint2> result(total_pairs);
-    cudaMemcpy(result.data(), d_out, total_pairs * sizeof(uint2), cudaMemcpyDeviceToHost);
+    // Get number of valid results
+    int h_out_count = 0;
+    cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);
+    std::vector<Result> result(h_out_count);
+    cudaMemcpy(result.data(), d_out, h_out_count * sizeof(Result), cudaMemcpyDeviceToHost);
 
-    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs);
-    
-    for (auto &pair : result){
-        if (pair.x == -1)
-            continue;
-        
-        std::cout << card_name[pair.x].first << " " << card_name[pair.y].first << "\n";
+    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs); cudaFree(d_out_count);
+
+    for (const auto &pair : result){
+        std::cout << card_name[pair.x].first << " " << card_name[pair.y].first << " " << pair.sim << "\n";
     }
 
     return 0;

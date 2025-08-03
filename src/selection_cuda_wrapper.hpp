@@ -4,12 +4,17 @@
 
 void upload_pow2neg(cudaStream_t stream = 0);
 
+struct Result {
+    int x, y;
+    float sim;
+};
+
 void launch_kernel_smh(
     const uint8_t* main_sketches,
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const int2* pairs,   
+    const int2* pairs,
 
     int total_pairs,
     double tau,
@@ -17,16 +22,17 @@ void launch_kernel_smh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    int2* out,
+    Result* out,
+    int* out_count,
     int blockSize
-    );
+);
 
 void launch_kernel_CBsmh(
     const uint8_t* main_sketches,
     const uint64_t* aux_sketches,
 
     const double* cards,
-    const int2* pairs,   
+    const int2* pairs,
 
     int total_pairs,
     double tau,
@@ -34,6 +40,7 @@ void launch_kernel_CBsmh(
     int m_aux, int m_hll,
     int n_rows, int n_bands,
 
-    int2* out,
+    Result* out,
+    int* out_count,
     int blockSize
-    );
+);
