@@ -148,6 +148,7 @@ int main(int argc, char *argv[])
     float threshold = 0.9;
     int mh_size = 8;
     int block_size = 256;
+    int total_rep = 1;
 
     char c;
     while ((c = getopt(argc, argv, "xl:h:m:b:")) != -1) {
@@ -256,19 +257,21 @@ int main(int argc, char *argv[])
     uint8_t* d_main = nullptr;
     uint64_t* d_aux = nullptr;
     double* d_cd = nullptr;
-    int2* d_out = nullptr;
     int2* d_pairs = nullptr;
+    Result* d_out = nullptr;
+    int* d_out_count = nullptr;
 
     cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
     cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
     cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out, total_pairs * sizeof(int2));
     cudaMalloc(&d_pairs, total_pairs * sizeof(int2));
+    cudaMalloc(&d_out, total_pairs * sizeof(Result));
+    cudaMalloc(&d_out_count, sizeof(int));
 
     cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(uint2), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(int2), cudaMemcpyHostToDevice);
 
     for (int rep = 0; rep < total_rep; ++rep) {
         // ---- SMH CUDA
@@ -276,20 +279,31 @@ int main(int argc, char *argv[])
         TIMERSTART(criterio_smh_cuda)
         launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                         mh_size, m_hll, n_rows, 
-                        n_bands, d_out, block_size);
+                        n_bands, d_out, d_out_count, block_size);
         TIMERSTOP(criterio_smh_cuda)
         std::cout << ";m:" << mh_size << std::endl;
+        
+        // Get matches count but don't print
+        int h_out_count = 0;
+        cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);
+        std::vector<Result> result(h_out_count);
+        cudaMemcpy(result.data(), d_out, h_out_count * sizeof(Result), cudaMemcpyDeviceToHost);
 
         // ---- CB+SMH CUDA
         std::cout << list_file << ";CB+smh_a;" << threshold << ";";
         TIMERSTART(criterio_CBsmh_cuda)
         launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,   
                         mh_size, m_hll, n_rows, 
-                        n_bands, d_out, block_size);
+                        n_bands, d_out, d_out_count, block_size);
         TIMERSTOP(criterio_CBsmh_cuda)
         std::cout << ";m:" << mh_size << std::endl;
+
+        // Get matches count but don't print
+        cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);
+        result.resize(h_out_count);
+        cudaMemcpy(result.data(), d_out, h_out_count * sizeof(Result), cudaMemcpyDeviceToHost);
     }
 
-    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs);
+    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs); cudaFree(d_out_count);
     return 0;
 }
