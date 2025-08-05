@@ -2,15 +2,15 @@
 set -euo pipefail
 
 ########################  PARÁMETROS AJUSTABLES  ########################
-LISTA="text.txt"   # archivo con la lista de documentos
-THRESHOLD="0.9"    # umbral de similitud
-REPS=1             # repeticiones del experimento
+LISTA="text.txt"   
+THRESHOLD="0.9"    
+REPS=1             
 
-THREADS=8          # ← un único valor de hilos para la CPU
-BLOCK_SIZE=128     # ← un único tamaño de bloque para la GPU
+THREADS=8          
+BLOCK_SIZE=128     
 
-MH_SIZE_ARR=(512)  # puedes añadir más valores si lo necesitas
-EPS=1e-6           # tolerancia para considerar “igual”
+MH_SIZE_ARR=(512) 
+EPS=1e-6          
 #########################################################################
 
 CPU_BINARY="./build/selection"
@@ -36,8 +36,8 @@ f_run () {            # $1 = comando completo + args
 for m in "${MH_SIZE_ARR[@]}"; do
   for r in $(seq 1 "$REPS");    do
 
-    cpu_out=$(f_run "$CPU_BINARY" -l "$LISTA" -t "$THREADS" -h "$THRESHOLD" -m "$m")
-    gpu_out=$(f_run "$GPU_BINARY" -l "$LISTA"              -h "$THRESHOLD" -m "$m" -b "$BLOCK_SIZE")
+    cpu_out=$(f_run "$CPU_BINARY" -l "$LISTA" -t "$THREADS" -h "$THRESHOLD" -a "$m" -c "smh_a")
+    gpu_out=$(f_run "$GPU_BINARY" -l "$LISTA" -b "$BLOCK_SIZE" -h "$THRESHOLD" -a "$m" )
 
     # Une ambas salidas por la clave y calcula la diferencia
     join -1 1 -2 1 "$cpu_out" "$gpu_out" |                        \
