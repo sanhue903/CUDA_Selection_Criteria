@@ -9,7 +9,7 @@ struct Result {
     float sim;
 };
 
-
+__constant__ float d_pow2neg[64];
 
 __global__ void kernel_smh(
     const uint8_t* main_sketches,
