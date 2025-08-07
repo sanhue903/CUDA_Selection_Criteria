@@ -1,7 +1,0 @@
-impl,threads,mh_size,rep,criterio,tiempo
-cpu,8,512,1,build_smh,
-cpu,8,512,1,smh_a,0.0011189
-cpu,8,512,1,CB+smh_a,0.000130955
-gpu,256,512,1,build_smh,0.0149894
-gpu,256,512,1,smh_a,0.00111636
-gpu,256,512,1,CB+smh_a,5.9371e-05
