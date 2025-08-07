@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <cuda_runtime.h>
 #include <cstdint>
 #include <cstdio>
@@ -9,7 +8,6 @@ struct Result {
     int x, y;
     float sim;
 };
-
 
 
 __global__ void kernel_smh(
@@ -37,12 +35,13 @@ __global__ void kernel_smh(
 
     const uint64_t* v1 = aux_sketches + i * m_aux;
     const uint64_t* v2 = aux_sketches + k * m_aux;
+
     if (!smh_a(v1, v2, n_rows, n_bands))
         return;
 
     double c1 = cards[i];
     double c2 = cards[k];
-    
+
     const uint8_t* main1 = main_sketches + i * m_hll;
     const uint8_t* main2 = main_sketches + k * m_hll;
 
@@ -54,6 +53,7 @@ __global__ void kernel_smh(
     if (jacc14 < 0.0 && jacc14 != 0.0) jacc14 = -jacc14;
     if (!isfinite(jacc14)) return;
     if (jacc14 < tau) return;
+
 
     int out_idx = atomicAdd(out_count, 1);
     out[out_idx] = {i, k, (float)jacc14};
@@ -111,10 +111,25 @@ __global__ void kernel_CBsmh(
         return;
     }
 
+
     int out_idx = atomicAdd(out_count, 1);
     out[out_idx] = {i, k, (float)jacc14};
 }
 
+
+void upload_pow2neg(cudaStream_t stream = 0){
+    float h_pow2neg[64];
+    for (int k = 0; k < 64; ++k)
+        h_pow2neg[k] = ldexpf(1.0f, -k);
+    
+    cudaMemcpyToSymbolAsync(d_pow2neg,
+                            h_pow2neg,
+                            sizeof(h_pow2neg),
+                            0,
+                            cudaMemcpyHostToDevice,
+                            stream);
+
+}
 
 
 void launch_kernel_smh(
@@ -157,16 +172,18 @@ void launch_kernel_CBsmh(
     double tau,
     int m_aux, int m_hll,
     int n_rows, int n_bands,
+
     Result* out,
     int* out_count,
     int blockSize
 ) {
     int gridSize = (total_pairs + blockSize - 1) / blockSize;
+
     cudaMemset(out_count, 0, sizeof(int));
     kernel_CBsmh<<<gridSize, blockSize>>>(
         main_sketches, aux_sketches, cards, pairs, total_pairs, tau, m_aux, m_hll, n_rows, n_bands, out, out_count
     );
-    // Optionally: check for errors without sync
+
     #ifndef NDEBUG
     cudaError_t err = cudaPeekAtLastError();
     if (err != cudaSuccess) {

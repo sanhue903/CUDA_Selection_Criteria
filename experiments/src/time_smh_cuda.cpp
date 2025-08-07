@@ -177,6 +177,7 @@ int main(int argc, char *argv[])
     omp_set_num_threads(threads);
     load_file_list(files, list_file);
 
+
     TIMERSTART(construccion)
     std::vector<std::pair<std::string, double>> card_name (files.size ());
     std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
@@ -209,15 +210,15 @@ int main(int argc, char *argv[])
     TIMERSTOP(construccion);
     std::cout << std::endl;
 
+
     // Sort by cardinality
     std::sort(card_name.begin(), card_name.end(),
         [](const std::pair<std::string, double> &x, const std::pair<std::string, double> &y) {
             return x.second < y.second;
         });
     
-    
+    upload_pow2neg();
 
-    // TIMERSTOP(construccion) -- removed duplicate to avoid redeclaration
     int n_rows = 1, n_bands = 1;
 
     for (int band = 1; band <= mh_size; band++) {
@@ -282,6 +283,7 @@ int main(int argc, char *argv[])
                         n_bands, d_out, d_out_count, block_size);
         TIMERSTOP(criterio_smh_cuda);
         std::cout << std::endl;
+
         
         // Get matches count but don't print
         int h_out_count = 0;
@@ -297,6 +299,7 @@ int main(int argc, char *argv[])
                         n_bands, d_out, d_out_count, block_size);
         TIMERSTOP(criterio_CBsmh_cuda);
         std::cout << std::endl;
+
 
         // Get matches count but don't print
         cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);
