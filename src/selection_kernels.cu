@@ -116,22 +116,6 @@ __global__ void kernel_CBsmh(
     out[out_idx] = {i, k, (float)jacc14};
 }
 
-
-void upload_pow2neg(cudaStream_t stream = 0){
-    float h_pow2neg[64];
-    for (int k = 0; k < 64; ++k)
-        h_pow2neg[k] = ldexpf(1.0f, -k);
-    
-    cudaMemcpyToSymbolAsync(d_pow2neg,
-                            h_pow2neg,
-                            sizeof(h_pow2neg),
-                            0,
-                            cudaMemcpyHostToDevice,
-                            stream);
-
-}
-
-
 void launch_kernel_smh(
     const uint8_t* main_sketches,
     const uint64_t* aux_sketches,

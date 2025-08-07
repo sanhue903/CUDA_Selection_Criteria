@@ -217,7 +217,6 @@ int main(int argc, char *argv[])
             return x.second < y.second;
         });
     
-    upload_pow2neg();
 
     int n_rows = 1, n_bands = 1;
 
