@@ -46,7 +46,7 @@ __global__ void kernel_smh(
     const uint8_t* main1 = main_sketches + i * m_hll;
     const uint8_t* main2 = main_sketches + k * m_hll;
 
-    double union_card = hll_union_card(main1, main2, m_hll);
+    double union_card = hll_union_card(main1, main2);
     if (union_card == 0.0) return;
     if (!isfinite(union_card) || union_card < 0.0) return;
 
@@ -94,7 +94,7 @@ __global__ void kernel_CBsmh(
 
     const uint8_t* main1 = main_sketches + i * m_hll;
     const uint8_t* main2 = main_sketches + k * m_hll;
-    double union_card = hll_union_card(main1, main2, m_hll);
+    double union_card = hll_union_card(main1, main2);
     if (union_card == 0.0) {
         return;
     }

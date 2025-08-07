@@ -29,17 +29,42 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
 
 extern __constant__ float d_pow2neg[64];
 
-__device__ double hll_union_card(const uint8_t* a, const uint8_t* b, int m)
+
+__device__ double hll_union_card(const uint8_t* a,
+                           const uint8_t* b)
 {
-    double Z = 0.f;
+    const int p = 14;
+    const int m = 1 << p;
+    uint32_t zeros = 0;
+    long double sum = 0.0;
+
     for (int j = 0; j < m; ++j) {
-        uint8_t r = max(a[j], b[j]);
-        // Equivalent to pow2neg: 2^-r
-        if (r) Z += ldexpf(1.0f, -int(r));
+        uint8_t r = std::max(a[j], b[j]);
+        if (r == 0) {
+            ++zeros;
+        } else {
+            /*  ldexp(1.0, -r)   ==  2^(-r)  */
+            sum += std::ldexp(1.0L, -int(r));
+        }
     }
-    if (Z == 0.0) Z = 1e-9; // Clamp to small positive value
-    const double alpha = 0.7213f / (1.f + 1.079f / m);
-    return alpha * m * m / Z;
+
+    const long double alpha =
+        (m == 16) ? 0.673L :
+        (m == 32) ? 0.697L :
+        (m == 64) ? 0.709L :
+        0.7213L / (1 + 1.079L / m);
+
+    long double raw = alpha * m * m / (zeros + sum);
+
+    /* 1) low-range correction (linear counting) */
+    if (raw < 2.5 * m && zeros) {
+        raw = m * std::log(static_cast<long double>(m) / zeros);
+    }
+    /* 2) high-range correction  (Flajolet et al. §4.3) */
+    else if (raw > (1ULL<<32) / 30.0) {
+        raw = -(1ULL<<32) * std::log1p(-raw / (1ULL<<32));
+    }
+    return static_cast<double>(raw);
 }
 
 #endif
