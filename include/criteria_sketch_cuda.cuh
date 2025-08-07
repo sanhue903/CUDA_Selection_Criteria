@@ -27,7 +27,7 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
     return false;
 }
 
-extern __constant__ float d_pow2neg[64];
+extern __constant__ float d_pow2neg[];
 
 __device__ double hll_union_card(const uint8_t* a, const uint8_t* b, int m)
 {
