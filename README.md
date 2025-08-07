@@ -71,8 +71,6 @@ Where
 
 We provide implementation of experiments to evaluate time of comparisions. To run these experiments using a certain file list of sequences, first we have to build the associated sketches with the `build_sketch` program.
 
-To compare the algorithm with OpenMP and CUDA, simply run the bash script `run_experiment.sh`; it will generate a CSV file with the execution times.
-
  These implementation are in the `experiments/src` folder. 
 
 ```
@@ -86,3 +84,5 @@ Where
 - `-b` option recieves the CUDA block size.
 
 The output is the time it takes to retrieve the similar pairs using the `CB+smh_a` criterion, we also include the results of the `CB` criterion and with no criterion (baseline case).
+
+To compare the algorithm with OpenMP and CUDA, simply run the bash script `run_experiment.sh`; it will generate a CSV file with the execution times. If you want to compare the results, run the bash script `run_comparison_experiment.sh`.
