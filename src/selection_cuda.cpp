@@ -115,7 +115,6 @@ int main(int argc, char *argv[]) {
                   return x.second < y.second;
               });   
 
-    upload_pow2neg();
     // Compute n_rows and n_bands
     int n_rows = 1, n_bands = 1;
     for (int band = 1; band <= m; ++band) {

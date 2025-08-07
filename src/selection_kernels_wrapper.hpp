@@ -3,7 +3,6 @@
 #include <cuda_runtime.h>
 
 
-void upload_pow2neg(cudaStream_t stream = 0);
 struct Result {
     int x, y;
     float sim;
