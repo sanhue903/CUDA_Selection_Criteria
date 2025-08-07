@@ -27,38 +27,19 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
     return false;
 }
 
+extern __constant__ float d_pow2neg[64];
 
-__device__ double hll_union_card(const uint8_t* a,
-                                 const uint8_t* b,
-                                 int            m)
+__device__ double hll_union_card(const uint8_t* a, const uint8_t* b, int m)
 {
-    double Z = 0.0;
-    int    zeros = 0;
-
-    // 1) fusión por max() y acumulación harmónica -------------------------
+    double Z = 0.f;
     for (int j = 0; j < m; ++j) {
         uint8_t r = max(a[j], b[j]);
-
-        // *** NO añadir 2^0 cuando r == 0 ***
-        if (r) Z += ldexpf(1.0f, -int(r));
-
-        zeros += (r == 0);
+        // Equivalent to pow2neg: 2^-r
+        if (z) Z += ldexpf(1.0f, -int(r));
     }
-
-    const double alpha = 0.7213 / (1.0 + 1.079 / m);
-    double est = alpha * m * m / Z;
-
-    // 2) small-range correction (linear-counting) --------------------------
-    if (est < 2.5 * m && zeros) {
-        est = m * log(static_cast<double>(m) / zeros);
-    }
-
-    // 3) large-range correction -------------------------------------------
-    constexpr double THRESH = double(1ULL << 32);   // 4 294 967 296
-    if (est > THRESH) {
-        est = -THRESH * log1p(-est / THRESH);
-    }
-    return est;
+    if (Z == 0.0) Z = 1e-9; // Clamp to small positive value
+    const double alpha = 0.7213f / (1.f + 1.079f / m);
+    return alpha * m * m / Z;
 }
 
 #endif
