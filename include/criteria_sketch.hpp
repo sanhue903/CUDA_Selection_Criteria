@@ -42,7 +42,7 @@ double kota_mas(size_t card_A, size_t card_B, double t_hat, int p, float Z=2.0){
 	return K_mas;
 }
 
-bool CB(double tau, double card_A, double card_B){
+inline bool CB(double tau, double card_A, double card_B){
 	// card_A <= card_B
 	double gamma = (double)card_A / card_B;
 	return (gamma >= tau);

@@ -1,3 +1,4 @@
+// selection_main.cpp
 
 #include "sketch/sketch.h"
 #include <fstream>
@@ -12,11 +13,7 @@
 #include <cuda_runtime.h>
 #include "include/criteria_sketch.hpp"
 #include "include/criteria_sketch_cuda.cuh"
-
-extern "C" {
-    void kernel_smh(const uint64_t*, const double*, int, int, int, int, double, int*);
-    void kernel_CBsmh(const uint64_t*, const double*, int, int, int, int, double, int*);
-}
+#include "selection_kernels_wrapper.hpp"
 
 // Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
@@ -65,9 +62,10 @@ int main(int argc, char *argv[]) {
     float threshold = 0.9;
     int aux_bytes = 256;  // will use as m = aux_bytes/8
     std::string criterion = "smh_a";
+    int block_size = 256;
 
     char c;
-    while ((c = getopt(argc, argv, "xl:t:a:h:c:")) != -1) {
+    while ((c = getopt(argc, argv, "xl:b:a:h:c:")) != -1) {
         switch (c) {
             case 'x':
                 std::cout << "Usage: -l -t -a -h -c\n";
@@ -75,14 +73,14 @@ int main(int argc, char *argv[]) {
             case 'l':
                 list_file = std::string(optarg);
                 break;
+            case 'b':
+                block_size = std::stoi(optarg);
+                break;
             case 'a':
                 aux_bytes = std::stoi(optarg);
                 break;
             case 'h':
                 threshold = std::stof(optarg);
-                break;
-            case 'c':
-                criterion = std::string(optarg);
                 break;
             default:
                 break;
@@ -115,7 +113,7 @@ int main(int argc, char *argv[]) {
               [](const std::pair<std::string, double>& x,
                  const std::pair<std::string, double>& y) {
                   return x.second < y.second;
-              });
+              });   
 
     // Compute n_rows and n_bands
     int n_rows = 1, n_bands = 1;
@@ -129,64 +127,62 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Flatten sketches and cards to arrays
-    std::vector<uint64_t> sketches_flat(N * m);
+     // Flatten data for GPU
+    const size_t m_hll = 1 << 14;
+    const size_t buckets_aux = aux_bytes/8;
+
+    std::vector<uint8_t> hll_flat(N * m_hll);
+    std::vector<uint64_t> aux_smh_flat(N * buckets_aux);
     std::vector<double> cards_sorted(N);
+
     for (int i = 0; i < N; ++i) {
-        std::copy(name2aux[card_name[i].first].begin(),
-                  name2aux[card_name[i].first].end(),
-                  sketches_flat.begin() + i * m);
+        const std::string& fname = card_name[i].first;
+        std::memcpy(aux_smh_flat.data() + i * m, name2aux[fname].data(), aux_bytes);
+        std::memcpy(hll_flat.data() + i *m_hll, name2hll14[fname]->data(), m_hll);
         cards_sorted[i] = card_name[i].second;
     }
 
-    // --- Allocate/copy on GPU
-    uint64_t* d_sk;
-    double* d_cd;
-    int* d_out1;
-    int* d_out2;
-    int total_pairs = N * (N - 1) / 2;
+   
+    std::vector<int2> pairs;
+    for (int i = 0; i < N - 1; ++i)
+        for (int k = i + 1; k < N; ++k)
+            pairs.push_back({i, k});
+    size_t total_pairs = pairs.size();
 
-    cudaMalloc(&d_sk,  sketches_flat.size() * sizeof(uint64_t));
-    cudaMalloc(&d_cd,  cards_sorted.size() * sizeof(double));
-    cudaMalloc(&d_out1, total_pairs * sizeof(int));
-    cudaMalloc(&d_out2, total_pairs * sizeof(int));
+    // --- Allocate device arrays
+    uint8_t* d_main = nullptr;
+    uint64_t* d_aux = nullptr;
+    double* d_cd = nullptr;
+    int2* d_pairs = nullptr;
+    Result* d_out = nullptr;
+    int* d_out_count = nullptr;
 
-    cudaMemcpy(d_sk, sketches_flat.data(), sketches_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
+    cudaMalloc(&d_main, hll_flat.size() * sizeof(uint8_t));
+    cudaMalloc(&d_aux, aux_smh_flat.size() * sizeof(uint64_t));
+    cudaMalloc(&d_cd, cards_sorted.size() * sizeof(double));
+    cudaMalloc(&d_pairs, total_pairs * sizeof(int2));
+    cudaMalloc(&d_out, total_pairs * sizeof(Result));
+    cudaMalloc(&d_out_count, sizeof(int));
+
+    cudaMemcpy(d_main, hll_flat.data(), hll_flat.size() * sizeof(uint8_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_aux, aux_smh_flat.data(), aux_smh_flat.size() * sizeof(uint64_t), cudaMemcpyHostToDevice);
     cudaMemcpy(d_cd, cards_sorted.data(), cards_sorted.size() * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_pairs, pairs.data(), total_pairs * sizeof(int2), cudaMemcpyHostToDevice);
 
-    int block = 256;
-    int grid = (total_pairs + block - 1) / block;
+    launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
+                    aux_bytes, m_hll, n_rows, 
+                    n_bands, d_out, d_out_count, block_size);
 
-    // --- Launch CUDA kernels
-    kernel_smh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out1);
-    cudaDeviceSynchronize();
+    // Get number of valid results
+    int h_out_count = 0;
+    cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);
+    std::vector<Result> result(h_out_count);
+    cudaMemcpy(result.data(), d_out, h_out_count * sizeof(Result), cudaMemcpyDeviceToHost);
 
-    kernel_CBsmh<<<grid, block>>>(d_sk, d_cd, N, m, n_rows, n_bands, threshold, d_out2);
-    cudaDeviceSynchronize();
+    cudaFree(d_aux); cudaFree(d_cd); cudaFree(d_out); cudaFree(d_main); cudaFree(d_pairs); cudaFree(d_out_count);
 
-    // --- Copy results back
-    std::vector<int> smh_result(total_pairs), cbsmh_result(total_pairs);
-    cudaMemcpy(smh_result.data(), d_out1, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(cbsmh_result.data(), d_out2, total_pairs * sizeof(int), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_sk); cudaFree(d_cd); cudaFree(d_out1); cudaFree(d_out2);
-
-    // --- Output results with final Jaccard computation (CPU)
-    // For all pairs (i < k):
-    for (int idx = 0, i = 0; i < N - 1; ++i) {
-        std::string fn1 = card_name[i].first;
-        double e1 = card_name[i].second;
-        for (int k = i + 1; k < N; ++k, ++idx) {
-            std::string fn2 = card_name[k].first;
-            double e2 = card_name[k].second;
-            if (cbsmh_result[idx] == 1) {
-                double t = name2hll14[fn1]->union_size(*name2hll14[fn2]);
-                double jacc14 = (e1 + e2 - t) / t;
-                if (jacc14 >= threshold) {
-                    std::cout << fn1 << " " << fn2 << " " << jacc14 << "\n";
-                }
-            }
-        }
+    for (const auto &pair : result){
+        std::cout << card_name[pair.x].first << " " << card_name[pair.y].first << " " << pair.sim << "\n";
     }
 
     return 0;

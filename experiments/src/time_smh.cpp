@@ -25,12 +25,17 @@ uint64_t canonical_kmer (uint64_t kmer, uint k = 31)
 void sketch_file (std::vector<uint64_t> &mh_vector, std::string filename, uint k)
 {
 	sketch::SuperMinHash<> smh(mh_vector.size()-1);
-	seqan::SeqFileIn seqFileIn;
-	if (!open(seqFileIn, filename.c_str ()))
-	{
-		std::cerr << "ERROR: Could not open the file " << filename << ".\n";
-		return;
-	}
+	   seqan::SeqFileIn seqFileIn;
+	   if (!open(seqFileIn, filename.c_str ()))
+	   {
+			   // Try opening as gzipped file
+			   std::string gz_filename = filename + ".gz";
+			   if (!open(seqFileIn, gz_filename.c_str ()))
+			   {
+					   std::cerr << "ERROR: Could not open the file " << filename << " or " << gz_filename << ".\n";
+					   return;
+			   }
+	   }
 
 	seqan::CharString id;
 	seqan::IupacString seq;
@@ -100,7 +105,14 @@ void load_file_list (std::vector<std::string> & files, std::string & list_file, 
 		exit (-1);
 	}
 
-	while (getline (file, line)) files.push_back (path + line);
+	   while (getline (file, line)) {
+			   // Remove leading/trailing whitespace and carriage returns
+			   line.erase(0, line.find_first_not_of(" \t\r\n"));
+			   line.erase(line.find_last_not_of(" \t\r\n") + 1);
+			   if (!line.empty()) {
+					   files.push_back(path + line);
+			   }
+	   }
 	file.close();
 }
 
@@ -143,7 +155,7 @@ int main(int argc, char *argv[])
 			case 'm':
 				mh_size = std::stoi (optarg);
 				break;
-      case 'R':
+	  case 'R':
 				total_rep = std::stoi (optarg);
 				break;
 			default:
@@ -184,7 +196,6 @@ int main(int argc, char *argv[])
 		card_name.at (i_processed) = std::make_pair (filename, c);
 	}
 
-	TIMERSTOP(construccion)
 	std::cout << ";m:" << mh_size << "\n";
 
 	// Ordenamos los pares de card_name según la estimación (hll's de tamaño p=14).
@@ -196,6 +207,7 @@ int main(int argc, char *argv[])
 			});
 
 
+	TIMERSTOP(construccion)
 
 	int n_rows = 1, n_bands = 1;
 	for (int band=1; band <=mh_size; band++){

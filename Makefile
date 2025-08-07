@@ -1,100 +1,97 @@
 ###############################################################################
-#  Makefile: OpenMP  +  CUDA
+#  Makefile  —  C++ (OpenMP) + CUDA
 ###############################################################################
 
-TARGETS_CPU  := time_smh build_sketch selection
-TARGETS_CUDA := selection_cuda
-TARGETS      := $(TARGETS_CPU) $(TARGETS_CUDA)
+############################### 1. Targets ####################################
+CPU_APPS  := time_smh build_sketch selection
+CUDA_APPS := selection_cuda time_smh_cuda
+APPS      := $(CPU_APPS) $(CUDA_APPS)
 
-SRC_DIRS := experiments/src src
+############################ 2. Archivos fuente ###############################
+SRC_CPU  := \
+    experiments/src/time_smh.cpp \
+    src/build_sketch.cpp          \
+    src/selection.cpp
 
-# ------------------------ Compiladores y flags ----------------------------
-CXX       := c++
-CXXFLAGS  := -Wall -Wextra -std=c++14 -fopenmp -O3 -march=native \
-             -DSEQAN_HAS_ZLIB=1 -DNDEBUG
-LDFLAGS   := -lstdc++ -lm -lz -pthread
+SRC_CUDA := \
+    src/selection_kernels.cu      \
+    src/selection_cuda.cpp        \
+    experiments/src/time_smh_cuda.cpp
 
-NVCC      := nvcc
-CUDAFLAGS := -O3 --std=c++14 -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
-             -arch=sm_86 -DNDEBUG -lineinfo
-LDFLAGS_CUDA := -lcudart -lm -lz
+############################ 3. Herramientas ##################################
+CXX  ?= c++
+NVCC ?= nvcc
 
+############################ 4. Flags comunes #################################
+CUDA_ARCH ?= sm_86                # cámbialo si tu GPU es distinta
 
-INCLUDE := -I. -Isketch/ -Isketch/include -Isketch/include/blaze \
-           -Iseqan-library-2.4.0/include -Iinclude
+INC_DIRS  := -I. -Isketch -Isketch/include -Isketch/include/blaze \
+             -Iseqan-library-2.4.0/include -Iinclude              \
+             -I/usr/local/cuda/include
 
+CXXFLAGS  := -O3 -std=c++17 -Wall -Wextra -march=native \
+             -fopenmp -DSEQAN_HAS_ZLIB=1 -DNDEBUG $(INC_DIRS)
 
-BUILD    := build
-OBJ_DIR  := $(BUILD)/objects
-BIN_DIR  := $(BUILD)
+CUDAFLAGS := -O3 --std=c++17 -arch=$(CUDA_ARCH) \
+             -Xcompiler "-Wall -Wextra -fopenmp -march=native" \
+             -lineinfo -DNDEBUG $(INC_DIRS)
 
+LDFLAGS_CPU  := -lz -pthread -fopenmp
+LDFLAGS_CUDA := -lcudart -lz -Xcompiler -fopenmp
 
-# Sources
-time_smh_src          := experiments/src/time_smh.cpp
-build_sketch_src      := src/build_sketch.cpp
-selection_src         := src/selection.cpp
-selection_main_src    := src/selection_main.cpp
-selection_cuda_src    := src/selection_cuda.cu
+############################ 5. Carpetas build ################################
+BUILD_DIR := build
+OBJ_DIR   := $(BUILD_DIR)/objects
+BIN_DIR   := $(BUILD_DIR)
 
-# Objects
-OBJECTS_CPU   := $(OBJ_DIR)/experiments/src/time_smh.o \
-                 $(OBJ_DIR)/src/build_sketch.o \
-                 $(OBJ_DIR)/src/selection.o
+########################### 6. Objetos derivados ##############################
+CPP_OBJS := $(addprefix $(OBJ_DIR)/,$(SRC_CPU:.cpp=.o)) \
+            $(addprefix $(OBJ_DIR)/,$(filter %.cpp,$(SRC_CUDA:.cpp=.o)))
+CU_OBJS  := $(addprefix $(OBJ_DIR)/,$(SRC_CUDA:.cu=.o))
+ALL_OBJS := $(CPP_OBJS) $(CU_OBJS)
 
-OBJECTS_CUDA  := $(OBJ_DIR)/src/selection_main.o \
-                 $(OBJ_DIR)/src/selection_cuda.o
-
-BINARIES_CPU  := $(BIN_DIR)/time_smh $(BIN_DIR)/build_sketch $(BIN_DIR)/selection
-
-BINARIES_CUDA := $(BIN_DIR)/selection_cuda
-BINARIES      := $(BINARIES_CPU) $(BINARIES_CUDA)
-
-###############################################################################
-# 7. Regla por defecto
-###############################################################################
-all: build $(BINARIES)
-
-###############################################################################
-# 8. Compilar objetos
-###############################################################################
-$(OBJ_DIR)/%.o: %.cpp
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
-
-$(OBJ_DIR)/%.o: %.cu
-	@mkdir -p $(@D)
-	$(NVCC) $(CUDAFLAGS) $(INCLUDE) -c $< -o $@
-
-
-# ------------------------ 9. Enlazar ejecutables -----------------------------
-# CPU
-
-$(BIN_DIR)/time_smh: $(OBJ_DIR)/experiments/src/time_smh.o
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
-
-$(BIN_DIR)/build_sketch: $(OBJ_DIR)/src/build_sketch.o
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
-
-$(BIN_DIR)/selection: $(OBJ_DIR)/src/selection.o
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ $(LDFLAGS) -o $@
-
-# CUDA target (host+device juntos)
-$(BIN_DIR)/selection_cuda: $(OBJ_DIR)/src/selection_main.o $(OBJ_DIR)/src/selection_cuda.o
-	@mkdir -p $(@D)
-	$(NVCC) $(CUDAFLAGS) $(INCLUDE) $^ $(LDFLAGS_CUDA) -o $@
-
-# Prevent accidental linkage of selection_main.o as a standalone executable
-$(BIN_DIR)/selection_main.o:
-	@true
-
-build:
-	@mkdir -p $(OBJ_DIR)
+########################## 7. Reglas de alto nivel ############################
+.PHONY: all clean
+all: $(addprefix $(BIN_DIR)/,$(APPS))
 
 clean:
-	@echo "Removing all build directory"
-	@rm -rf $(BUILD)
+	@echo "Cleaning build directory…"
+	@rm -rf $(BUILD_DIR)
 
-.PHONY: all clean build
+########################### 8. Reglas patrón ##################################
+# Compilación .cpp → .o
+$(OBJ_DIR)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Compilación .cu → .o
+$(OBJ_DIR)/%.o: %.cu
+	@mkdir -p $(@D)
+	$(NVCC) $(CUDAFLAGS) -c $< -o $@
+
+########################### 9. Enlazado final #################################
+# --- CPU ---
+$(BIN_DIR)/time_smh: $(addprefix $(OBJ_DIR)/,experiments/src/time_smh.o)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_CPU) -o $@
+
+$(BIN_DIR)/build_sketch: $(addprefix $(OBJ_DIR)/,src/build_sketch.o)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_CPU) -o $@
+
+$(BIN_DIR)/selection: $(addprefix $(OBJ_DIR)/,src/selection.o)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS_CPU) -o $@
+
+# --- GPU ---
+# selection_cuda  ← host (selection_cuda.cpp) + kernels (.cu)
+$(BIN_DIR)/selection_cuda: \
+	$(addprefix $(OBJ_DIR)/,src/selection_cuda.o src/selection_kernels.o)
+	@mkdir -p $(@D)
+	$(NVCC) $(CUDAFLAGS) $^ $(LDFLAGS_CUDA) -o $@
+
+# time_smh_cuda   ← host (time_smh_cuda.cpp) + kernels (.cu)
+$(BIN_DIR)/time_smh_cuda: \
+	$(addprefix $(OBJ_DIR)/,experiments/src/time_smh_cuda.o src/selection_kernels.o)
+	@mkdir -p $(@D)
+	$(NVCC) $(CUDAFLAGS) $^ $(LDFLAGS_CUDA) -o $@
