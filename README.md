@@ -85,4 +85,4 @@ Where
 
 The output is the time it takes to retrieve the similar pairs using the `CB+smh_a` criterion, we also include the results of the `CB` criterion and with no criterion (baseline case).
 
-To compare the algorithm with OpenMP and CUDA, simply run the bash script `run_experiment.sh`; it will generate a CSV file with the execution times. If you want to compare the results, run the bash script `run_comparison_experiment.sh`.
+To compare the algorithm with OpenMP and CUDA, simply run the bash script `run_experiment.sh`; it will generate a CSV file with the execution times. If you want to compare the results, run the bash script `run_comparison_experiment.sh`. Note that if you want to tweak the parameters like the list of genomes to compare or the threshold you can do so by modifying the bash scripts at the beggining.
