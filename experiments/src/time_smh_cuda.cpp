@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     omp_set_num_threads(threads);
     load_file_list(files, list_file);
 
-    std::cout << list_file << ";build_smh;" << threshold << ";";
+
     TIMERSTART(construccion)
     std::vector<std::pair<std::string, double>> card_name (files.size ());
     std::map<std::string, std::shared_ptr<sketch::hll_t>> name2hll;
@@ -206,7 +206,10 @@ int main(int argc, char *argv[])
         card_name.at (i_processed) = std::make_pair (filename, c);
     }
 
-    std::cout << ";m:" << mh_size << "\n";
+    std::cout << list_file << ";build_smh;" << threshold << ";";
+    TIMERSTOP(construccion);
+    std::cout << std::endl;
+
 
     // Sort by cardinality
     std::sort(card_name.begin(), card_name.end(),
@@ -214,10 +217,8 @@ int main(int argc, char *argv[])
             return x.second < y.second;
         });
     
-    
-
     upload_pow2neg();
-    TIMERSTOP(construccion)
+
     int n_rows = 1, n_bands = 1;
 
     for (int band = 1; band <= mh_size; band++) {
@@ -280,8 +281,9 @@ int main(int argc, char *argv[])
         launch_kernel_smh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, d_out_count, block_size);
-        TIMERSTOP(criterio_smh_cuda)
-        std::cout << ";m:" << mh_size << std::endl;
+        TIMERSTOP(criterio_smh_cuda);
+        std::cout << std::endl;
+
         
         // Get matches count but don't print
         int h_out_count = 0;
@@ -295,8 +297,9 @@ int main(int argc, char *argv[])
         launch_kernel_CBsmh(d_main, d_aux, d_cd, d_pairs, total_pairs, threshold,   
                         mh_size, m_hll, n_rows, 
                         n_bands, d_out, d_out_count, block_size);
-        TIMERSTOP(criterio_CBsmh_cuda)
-        std::cout << ";m:" << mh_size << std::endl;
+        TIMERSTOP(criterio_CBsmh_cuda);
+        std::cout << std::endl;
+
 
         // Get matches count but don't print
         cudaMemcpy(&h_out_count, d_out_count, sizeof(int), cudaMemcpyDeviceToHost);

@@ -1,10 +1,12 @@
 #!/bin/bash
 
-LISTA="text.txt"
+#LISTA="test.txt"
+LISTA="test_influeza_filelist.txt" 
 THRESHOLD="0.9"
 REPS=1
 THREADS_ARR=(8)
-BLOCK_SIZE=(64 128 256)
+BLOCK_SIZE=(256)
+
 MH_SIZE_ARR=(512)
 
 CPU_BINARY="./build/time_smh"
@@ -18,6 +20,7 @@ for T in "${THREADS_ARR[@]}"; do
   for M in "${MH_SIZE_ARR[@]}"; do
     for REP in $(seq 1 $REPS); do
       OUTPUT=$($CPU_BINARY -l $LISTA -t $T -h $THRESHOLD -m $M)
+
       echo "$OUTPUT" | grep ';build_smh;'   | awk -F';' -v t=$T -v m=$M '{print "cpu,"t","m","r",build_smh,"$4}'   >> $LOG
       echo "$OUTPUT" | grep ';smh_a;'       | awk -F';' -v t=$T -v m=$M '{print "cpu,"t","m","r",smh_a,"$4}'       >> $LOG
       echo "$OUTPUT" | grep ';CB+smh_a;'    | awk -F';' -v t=$T -v m=$M '{print "cpu,"t","m","r",CB+smh_a,"$4}'    >> $LOG
@@ -30,6 +33,7 @@ for B in "${BLOCK_SIZE[@]}"; do
     for M in "${MH_SIZE_ARR[@]}"; do
         for REP in $(seq 1 $REPS); do
             OUTPUT=$($GPU_BINARY -l $LISTA -h $THRESHOLD -m $M -b $B)
+
             echo "$OUTPUT" | grep ';build_smh;'   | awk -F';' -v t=$B -v m=$M '{print "gpu,"t","m","r",build_smh,"$4}'   >> $LOG
             echo "$OUTPUT" | grep ';smh_a;'       | awk -F';' -v t=$B -v m=$M '{print "gpu,"t","m","r",smh_a,"$4}'       >> $LOG
             echo "$OUTPUT" | grep ';CB+smh_a;'    | awk -F';' -v t=$B -v m=$M '{print "gpu,"t","m","r",CB+smh_a,"$4}'    >> $LOG

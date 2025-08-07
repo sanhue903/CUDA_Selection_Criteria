@@ -27,18 +27,41 @@ __device__ bool smh_a(const uint64_t* v1, const uint64_t* v2, uint n_rows, uint 
     return false;
 }
 
-extern __constant__ float d_pow2neg[];
-
-__device__ double hll_union_card(const uint8_t* a, const uint8_t* b, int m)
+__device__ double hll_union_card(const uint8_t* a,
+                           const uint8_t* b)
 {
-    double Z = 0.f;
+    const int p = 14;
+    const int m = 1 << p;
+    uint32_t zeros = 0;
+    double sum = 0.0;
+
     for (int j = 0; j < m; ++j) {
         uint8_t r = max(a[j], b[j]);
-        Z += d_pow2neg[r];
+        if (r == 0) {
+            ++zeros;
+        } else {
+            /*  ldexp(1.0, -r)   ==  2^(-r)  */
+            sum += ldexp(1.0, -int(r));
+        }
     }
 
-    const double alpha = 0.7213f / (1.f + 1.079f / m);
-    return alpha * m * m / Z;
+    const double alpha =
+        (m == 16) ? 0.673 :
+        (m == 32) ? 0.697 :
+        (m == 64) ? 0.709 :
+        0.7213 / (1 + 1.079 / m);
+
+    double raw = alpha * m * m / (zeros + sum);
+
+    /* 1) low-range correction (linear counting) */
+    if (raw < 2.5 * m && zeros) {
+        raw = m * log(double(m) / zeros);
+    }
+    /* 2) high-range correction  (Flajolet et al. §4.3) */
+    else if (raw > (1ULL<<32) / 30.0) {
+        raw = -(1ULL<<32) * log1p(-raw / (1ULL<<32));
+    }
+    return raw;
 }
 
 #endif

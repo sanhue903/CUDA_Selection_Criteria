@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
               [](const std::pair<std::string, double>& x,
                  const std::pair<std::string, double>& y) {
                   return x.second < y.second;
-              });
+              });   
 
     upload_pow2neg();
     // Compute n_rows and n_bands
