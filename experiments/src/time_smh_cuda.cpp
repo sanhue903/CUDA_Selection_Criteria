@@ -13,7 +13,7 @@
 #include <cuda_runtime.h>
 #include "include/metrictime2.hpp"
 #include "include/criteria_sketch.hpp"
-#include "src/selection_cuda_wrapper.hpp"  // This is your wrapper!
+#include "src/selection_kernels_wrapper.hpp"
 
 
 

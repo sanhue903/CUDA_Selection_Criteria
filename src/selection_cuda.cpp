@@ -13,7 +13,7 @@
 #include <cuda_runtime.h>
 #include "include/criteria_sketch.hpp"
 #include "include/criteria_sketch_cuda.cuh"
-#include "selection_cuda_wrapper.hpp"
+#include "selection_kernels_wrapper.hpp"
 
 // Helper to read SMH sketch from .smhN file
 std::vector<uint64_t> read_smh(std::string path) {
