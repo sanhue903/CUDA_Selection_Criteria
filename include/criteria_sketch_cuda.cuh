@@ -35,7 +35,7 @@ __device__ double hll_union_card(const uint8_t* a, const uint8_t* b, int m)
     for (int j = 0; j < m; ++j) {
         uint8_t r = max(a[j], b[j]);
         // Equivalent to pow2neg: 2^-r
-        if (z) Z += ldexpf(1.0f, -int(r));
+        if (Z) Z += ldexpf(1.0f, -int(r));
     }
     if (Z == 0.0) Z = 1e-9; // Clamp to small positive value
     const double alpha = 0.7213f / (1.f + 1.079f / m);
